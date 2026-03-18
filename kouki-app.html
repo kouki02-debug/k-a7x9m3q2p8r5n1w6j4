@@ -408,6 +408,10 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       style="padding:12px;background:var(--surface2);border:1px solid var(--blue);border-radius:var(--radius);color:var(--blue);font-family:'Shippori Mincho',serif;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">
       🪑 乗客画面を開く（後部座席タブレット用）
     </button>
+    <button onclick="togglePassengerLock()" id="drive-lock-btn"
+      style="padding:12px;background:var(--surface2);border:1px solid var(--muted);border-radius:var(--radius);color:var(--muted2);font-family:'Shippori Mincho',serif;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">
+      🔓 乗客画面ロック
+    </button>
     <button id="drive-stop-btn" onclick="driveStop()"
       style="display:none;padding:14px;background:var(--surface2);border:1px solid var(--red);border-radius:var(--radius);color:var(--red);font-family:'Shippori Mincho',serif;font-size:0.95rem;cursor:pointer;transition:all 0.2s;">
       ⏹ 運転終了
@@ -460,66 +464,90 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   </div>
 </div>
 
-<!-- 乗客パネル -->
-<div class="panel" id="passenger-panel" style="padding:0;background:#0a0a0a;min-height:100vh;position:relative;overflow:hidden;">
+<!-- 乗客パネル（横画面最適化・画面ロック対応） -->
+<div class="panel" id="passenger-panel" style="padding:0;background:#080808;position:relative;overflow:hidden;">
 
-  <!-- 言語選択 -->
-  <div style="position:absolute;top:12px;right:12px;z-index:10;display:flex;gap:6px;">
-    <button onclick="setPassLang('ja')" id="pass-lang-ja" style="padding:5px 10px;border-radius:8px;border:1px solid #c8a96e;background:rgba(200,169,110,0.2);color:#c8a96e;font-size:0.72rem;cursor:pointer;">🇯🇵 日本語</button>
-    <button onclick="setPassLang('en')" id="pass-lang-en" style="padding:5px 10px;border-radius:8px;border:1px solid #444;background:none;color:#888;font-size:0.72rem;cursor:pointer;">🇬🇧 EN</button>
-    <button onclick="setPassLang('id')" id="pass-lang-id" style="padding:5px 10px;border-radius:8px;border:1px solid #444;background:none;color:#888;font-size:0.72rem;cursor:pointer;">🇮🇩 ID</button>
+  <!-- 画面ロックオーバーレイ -->
+  <div id="pass-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="font-size:3rem;">🔒</div>
+    <div style="font-family:'Shippori Mincho',serif;font-size:1.2rem;color:#c8a96e;letter-spacing:0.1em;">画面がロックされています</div>
+    <div style="font-size:0.8rem;color:#6a6058;">運転者の操作で解除できます</div>
   </div>
 
-  <!-- 待機画面 -->
-  <div id="pass-waiting" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 110px);gap:24px;padding:20px;">
-    <div id="pass-clock-waiting" style="font-family:'DM Mono',monospace;font-size:4.5rem;color:#c8a96e;text-align:center;letter-spacing:0.05em;text-shadow:0 0 40px rgba(200,169,110,0.3);"></div>
-    <div style="text-align:center;">
-      <div style="font-size:4rem;margin-bottom:12px;">🚗</div>
-      <div id="pass-wait-title" style="font-family:'Shippori Mincho',serif;font-size:1.6rem;color:#e8e0d4;margin-bottom:8px;letter-spacing:0.1em;">ご乗車ありがとうございます</div>
-      <div id="pass-wait-sub" style="font-size:1rem;color:#6a6058;letter-spacing:0.05em;">間もなく出発いたします</div>
-    </div>
-    <!-- シートベルト -->
-    <div style="background:rgba(200,169,110,0.1);border:2px solid rgba(200,169,110,0.4);border-radius:16px;padding:20px 28px;text-align:center;max-width:320px;">
-      <div style="font-size:2.5rem;margin-bottom:8px;">🔒</div>
-      <div id="pass-seatbelt" style="font-family:'Shippori Mincho',serif;font-size:1.1rem;color:#c8a96e;letter-spacing:0.08em;line-height:1.6;">シートベルトの<br>ご着用をお願いします</div>
-    </div>
+  <!-- 言語選択（右上固定・小さく） -->
+  <div style="position:absolute;bottom:10px;right:10px;z-index:50;display:flex;gap:4px;" id="pass-lang-area">
+    <button onclick="setPassLang('ja')" id="pass-lang-ja" style="padding:4px 8px;border-radius:6px;border:1px solid #c8a96e;background:rgba(200,169,110,0.2);color:#c8a96e;font-size:0.65rem;cursor:pointer;">🇯🇵</button>
+    <button onclick="setPassLang('en')" id="pass-lang-en" style="padding:4px 8px;border-radius:6px;border:1px solid #333;background:none;color:#666;font-size:0.65rem;cursor:pointer;">🇬🇧</button>
+    <button onclick="setPassLang('id')" id="pass-lang-id" style="padding:4px 8px;border-radius:6px;border:1px solid #333;background:none;color:#666;font-size:0.65rem;cursor:pointer;">🇮🇩</button>
   </div>
 
-  <!-- 運転中画面 -->
-  <div id="pass-driving" style="display:none;min-height:calc(100vh - 110px);position:relative;padding:16px;">
-    <!-- 左上：時刻 -->
-    <div id="pass-clock-driving" style="position:absolute;top:16px;left:16px;font-family:'DM Mono',monospace;font-size:1.8rem;color:#c8a96e;letter-spacing:0.05em;text-shadow:0 0 20px rgba(200,169,110,0.3);"></div>
-    <!-- 右上：料金 -->
-    <div id="pass-fare-area" style="position:absolute;top:12px;right:16px;text-align:right;">
-      <div style="font-size:0.65rem;color:#6a6058;letter-spacing:0.05em;">🚕 概算料金</div>
-      <div id="pass-fare-display" style="font-family:'DM Mono',monospace;font-size:1.6rem;color:#c8a96e;font-weight:700;">¥0</div>
+  <!-- ═══ 待機画面（横レイアウト） ═══ -->
+  <div id="pass-waiting" style="display:flex;width:100%;height:calc(100vh - 110px);min-height:300px;">
+    <!-- 左：時計エリア -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid #1a1a1a;padding:20px;">
+      <div id="pass-clock-waiting" style="font-family:'DM Mono',monospace;font-size:clamp(2.5rem,8vw,5rem);color:#c8a96e;letter-spacing:0.05em;text-shadow:0 0 40px rgba(200,169,110,0.3);"></div>
+      <div id="pass-date-waiting" style="font-family:'Noto Sans JP',sans-serif;font-size:clamp(0.7rem,2vw,0.9rem);color:#4a4040;margin-top:8px;letter-spacing:0.1em;"></div>
     </div>
-
-    <!-- 中央コンテンツ -->
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 180px);gap:20px;">
-      <div style="font-size:3.5rem;" id="pass-drive-icon">🚗</div>
-      <div id="pass-dest-name" style="font-family:'Shippori Mincho',serif;font-size:1.4rem;color:#e8e0d4;text-align:center;letter-spacing:0.08em;"></div>
-      <div id="pass-drive-dist" style="font-family:'DM Mono',monospace;font-size:1.1rem;color:#8a7868;"></div>
-      <!-- 到着予想 -->
-      <div style="background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.2);border-radius:14px;padding:16px 24px;text-align:center;">
-        <div id="pass-eta-label" style="font-size:0.72rem;color:#6a6058;margin-bottom:4px;letter-spacing:0.05em;">到着予想時刻</div>
-        <div id="pass-eta-time" style="font-family:'DM Mono',monospace;font-size:2rem;color:#c8a96e;font-weight:700;">--:--</div>
-        <div id="pass-eta-min" style="font-size:0.82rem;color:#8a7868;margin-top:2px;"></div>
+    <!-- 右：ウェルカム＋シートベルト -->
+    <div style="flex:1.2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;">
+      <div style="text-align:center;">
+        <div style="font-size:clamp(2rem,6vw,3.5rem);margin-bottom:10px;">🚗</div>
+        <div id="pass-wait-title" style="font-family:'Shippori Mincho',serif;font-size:clamp(1rem,3vw,1.6rem);color:#e8e0d4;margin-bottom:6px;letter-spacing:0.08em;">ご乗車ありがとうございます</div>
+        <div id="pass-wait-sub" style="font-size:clamp(0.7rem,2vw,0.9rem);color:#6a6058;letter-spacing:0.05em;">間もなく出発いたします</div>
       </div>
-      <!-- 注意事項 -->
-      <div style="text-align:center;color:#4a4040;font-size:0.8rem;">
-        <div id="pass-caution">⚠️ 急ブレーキにご注意ください</div>
+      <div style="background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.3);border-radius:14px;padding:16px 24px;text-align:center;width:100%;max-width:280px;">
+        <div style="font-size:clamp(1.5rem,4vw,2rem);margin-bottom:6px;">🔒</div>
+        <div id="pass-seatbelt" style="font-family:'Shippori Mincho',serif;font-size:clamp(0.85rem,2.5vw,1.1rem);color:#c8a96e;letter-spacing:0.06em;line-height:1.7;">シートベルトの<br>ご着用をお願いします</div>
       </div>
     </div>
   </div>
 
-  <!-- 到着画面 -->
-  <div id="pass-arrived" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 110px);gap:20px;padding:20px;text-align:center;">
-    <div style="font-size:4rem;">✅</div>
-    <div id="pass-arrived-title" style="font-family:'Shippori Mincho',serif;font-size:1.8rem;color:#c8a96e;letter-spacing:0.1em;">到着しました</div>
-    <div id="pass-arrived-dest" style="font-size:1rem;color:#8a7868;"></div>
-    <div id="pass-arrived-fare" style="font-family:'DM Mono',monospace;font-size:2.5rem;color:#c8a96e;font-weight:700;"></div>
-    <div id="pass-arrived-sub" style="font-size:0.9rem;color:#6a6058;letter-spacing:0.05em;">ご乗車ありがとうございました</div>
+  <!-- ═══ 運転中画面（横レイアウト） ═══ -->
+  <div id="pass-driving" style="display:none;width:100%;height:calc(100vh - 110px);min-height:300px;position:relative;">
+    <!-- 左パネル：時刻・目的地・距離 -->
+    <div style="position:absolute;left:0;top:0;bottom:0;width:45%;display:flex;flex-direction:column;justify-content:center;padding:24px 20px;border-right:1px solid #1a1a1a;">
+      <!-- 時刻 -->
+      <div id="pass-clock-driving" style="font-family:'DM Mono',monospace;font-size:clamp(2rem,7vw,4rem);color:#c8a96e;letter-spacing:0.04em;text-shadow:0 0 30px rgba(200,169,110,0.3);margin-bottom:8px;"></div>
+      <div id="pass-date-driving" style="font-size:clamp(0.65rem,1.5vw,0.8rem);color:#3a3030;margin-bottom:20px;font-family:'DM Mono',monospace;letter-spacing:0.08em;"></div>
+      <!-- 目的地 -->
+      <div id="pass-eta-label" style="font-size:clamp(0.6rem,1.5vw,0.75rem);color:#4a4040;letter-spacing:0.1em;margin-bottom:4px;text-transform:uppercase;">到着予想時刻</div>
+      <div id="pass-eta-time" style="font-family:'DM Mono',monospace;font-size:clamp(1.5rem,5vw,3rem);color:#e8e0d4;font-weight:700;letter-spacing:0.05em;margin-bottom:4px;">--:--</div>
+      <div id="pass-eta-min" style="font-size:clamp(0.7rem,2vw,0.88rem);color:#6a6058;margin-bottom:16px;"></div>
+      <!-- 距離 -->
+      <div id="pass-drive-dist" style="font-family:'DM Mono',monospace;font-size:clamp(0.8rem,2.5vw,1rem);color:#4a4040;"></div>
+    </div>
+
+    <!-- 右パネル：目的地名・料金・注意 -->
+    <div style="position:absolute;right:0;top:0;bottom:0;width:55%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px 20px;gap:16px;">
+      <!-- 目的地アイコン＋名前 -->
+      <div style="text-align:center;">
+        <div style="font-size:clamp(2rem,5vw,3rem);margin-bottom:8px;" id="pass-drive-icon">🚗</div>
+        <div id="pass-dest-name" style="font-family:'Shippori Mincho',serif;font-size:clamp(0.9rem,2.5vw,1.3rem);color:#e8e0d4;letter-spacing:0.08em;line-height:1.4;text-align:center;"></div>
+      </div>
+      <!-- 料金 -->
+      <div id="pass-fare-area" style="background:rgba(200,169,110,0.06);border:1px solid rgba(200,169,110,0.15);border-radius:14px;padding:14px 28px;text-align:center;width:100%;max-width:240px;">
+        <div style="font-size:clamp(0.6rem,1.5vw,0.72rem);color:#4a4040;letter-spacing:0.08em;margin-bottom:4px;">🚕 概算料金</div>
+        <div id="pass-fare-display" style="font-family:'DM Mono',monospace;font-size:clamp(1.5rem,5vw,2.5rem);color:#c8a96e;font-weight:700;">¥0</div>
+        <div id="pass-fare-km" style="font-size:clamp(0.6rem,1.5vw,0.7rem);color:#3a3030;margin-top:2px;"></div>
+      </div>
+      <!-- 注意 -->
+      <div id="pass-caution" style="font-size:clamp(0.65rem,1.8vw,0.8rem);color:#3a3030;text-align:center;">⚠️ 急ブレーキにご注意ください</div>
+    </div>
+  </div>
+
+  <!-- ═══ 到着画面（横レイアウト） ═══ -->
+  <div id="pass-arrived" style="display:none;width:100%;height:calc(100vh - 110px);min-height:300px;flex-direction:row;">
+    <!-- 左：チェックマーク＋到着 -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border-right:1px solid #1a1a1a;min-width:0;">
+      <div style="font-size:clamp(3rem,8vw,5rem);margin-bottom:12px;">✅</div>
+      <div id="pass-arrived-title" style="font-family:'Shippori Mincho',serif;font-size:clamp(1.2rem,4vw,2rem);color:#c8a96e;letter-spacing:0.1em;text-align:center;"></div>
+      <div id="pass-arrived-dest" style="font-size:clamp(0.7rem,2vw,0.9rem);color:#6a6058;margin-top:8px;text-align:center;"></div>
+    </div>
+    <!-- 右：料金＋お礼 -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px;min-width:0;">
+      <div id="pass-arrived-fare" style="font-family:'DM Mono',monospace;font-size:clamp(2rem,7vw,3.5rem);color:#c8a96e;font-weight:700;"></div>
+      <div id="pass-arrived-sub" style="font-size:clamp(0.75rem,2vw,0.95rem);color:#6a6058;letter-spacing:0.05em;text-align:center;line-height:1.6;"></div>
+    </div>
   </div>
 </div>
 
@@ -1334,14 +1362,29 @@ const _origSwitchTabForMap = window.switchTab;
 window.switchTab = function(n) {
   _origSwitchTabForMap(n);
   if (n === 'drive') { setTimeout(initDriveMap, 200); }
-  if (n === 'passenger') { initPassengerClock(); }
+  if (n === 'passenger') {
+    // タブバーとヘッダーを非表示
+    document.querySelector('.tabs').style.display = 'none';
+    document.querySelector('header').style.display = 'none';
+    // パネルを全画面に
+    const panel = document.getElementById('passenger-panel');
+    if (panel) panel.style.height = '100vh';
+    initPassengerClock();
+  } else {
+    // 他のタブに戻ったらタブバー・ヘッダー復元
+    document.querySelector('.tabs').style.display = 'flex';
+    document.querySelector('header').style.display = 'flex';
+  }
 };
 
 // ════ 乗客画面 ════
 const PASS_LANG_KEY = 'kouki_pass_lang';
 const FARE_TOGGLE_KEY = 'kouki_fare_toggle';
+const PASS_LOCK_KEY = 'kouki_pass_locked';
 let _passLang = 'ja';
 let _passClockInterval = null;
+let _passLocked = false;
+let _passSyncSetup = false;
 
 const PASS_TEXTS = {
   ja: {
@@ -1349,21 +1392,21 @@ const PASS_TEXTS = {
     seatbelt: 'シートベルトの\nご着用をお願いします',
     dest: '目的地', eta: '到着予想時刻', caution: '⚠️ 急ブレーキにご注意ください',
     arrived: '到着しました', thanks: 'ご乗車ありがとうございました',
-    fare_label: '🚕 概算料金', driving: '運転中'
+    fare_label: '🚕 概算料金', driving: '運転中', locked: '画面がロックされています', lockedSub: '運転者の操作で解除できます'
   },
   en: {
     welcome: 'Welcome aboard!', soon: 'Departing shortly',
     seatbelt: 'Please fasten\nyour seatbelt',
-    dest: 'Destination', eta: 'Estimated Arrival', caution: '⚠️ Please hold on',
+    dest: 'Destination', eta: 'Est. Arrival', caution: '⚠️ Please hold on',
     arrived: 'Arrived', thanks: 'Thank you for riding with us',
-    fare_label: '🚕 Est. Fare', driving: 'Driving'
+    fare_label: '🚕 Est. Fare', driving: 'Driving', locked: 'Screen is locked', lockedSub: 'Driver can unlock'
   },
   id: {
     welcome: 'Selamat datang!', soon: 'Akan segera berangkat',
     seatbelt: 'Harap kenakan\nSabuk pengaman',
     dest: 'Tujuan', eta: 'Perkiraan Tiba', caution: '⚠️ Harap berpegangan',
     arrived: 'Telah tiba', thanks: 'Terima kasih telah menggunakan layanan kami',
-    fare_label: '🚕 Estimasi Tarif', driving: 'Berkendara'
+    fare_label: '🚕 Estimasi Tarif', driving: 'Berkendara', locked: 'Layar dikunci', lockedSub: 'Pengemudi dapat membuka kunci'
   }
 };
 
@@ -1373,11 +1416,8 @@ window.setPassLang = function(lang) {
   ['ja','en','id'].forEach(l => {
     const btn = document.getElementById('pass-lang-' + l);
     if (!btn) return;
-    if (l === lang) {
-      btn.style.borderColor = '#c8a96e'; btn.style.background = 'rgba(200,169,110,0.2)'; btn.style.color = '#c8a96e';
-    } else {
-      btn.style.borderColor = '#444'; btn.style.background = 'none'; btn.style.color = '#888';
-    }
+    if (l === lang) { btn.style.borderColor='#c8a96e'; btn.style.background='rgba(200,169,110,0.2)'; btn.style.color='#c8a96e'; }
+    else { btn.style.borderColor='#333'; btn.style.background='none'; btn.style.color='#666'; }
   });
   updatePassengerTexts();
 };
@@ -1385,13 +1425,14 @@ window.setPassLang = function(lang) {
 function updatePassengerTexts() {
   const t = PASS_TEXTS[_passLang] || PASS_TEXTS.ja;
   const set = (id, val) => { const el=document.getElementById(id); if(el)el.innerHTML=val.replace(/\n/g,'<br>'); };
-  set('pass-wait-title', t.welcome);
-  set('pass-wait-sub', t.soon);
-  set('pass-seatbelt', t.seatbelt);
-  set('pass-eta-label', t.eta);
-  set('pass-caution', t.caution);
-  set('pass-arrived-sub', t.thanks);
+  set('pass-wait-title', t.welcome); set('pass-wait-sub', t.soon);
+  set('pass-seatbelt', t.seatbelt); set('pass-eta-label', t.eta);
+  set('pass-caution', t.caution); set('pass-arrived-sub', t.thanks);
   set('pass-arrived-title', t.arrived);
+  // ロック画面テキスト更新
+  const lockTexts = document.querySelectorAll('#pass-lock-overlay div');
+  if (lockTexts[1]) lockTexts[1].textContent = t.locked;
+  if (lockTexts[2]) lockTexts[2].textContent = t.lockedSub;
 }
 
 function initPassengerClock() {
@@ -1401,25 +1442,58 @@ function initPassengerClock() {
   updatePassengerTexts();
   updatePassengerClocks();
   _passClockInterval = setInterval(updatePassengerClocks, 1000);
-  // Firebase同期で状態を受信
-  syncPassengerFromFirebase();
+  // ロック状態を復元
+  _passLocked = localStorage.getItem(PASS_LOCK_KEY) === 'true';
+  applyPassengerLock(_passLocked);
+  // Firebase同期（1回だけ設定）
+  if (!_passSyncSetup) { _passSyncSetup = true; syncPassengerFromFirebase(); }
 }
 
 function updatePassengerClocks() {
   const now = new Date();
+  const WDAYS = ['日','月','火','水','木','金','土'];
   const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const ds = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} (${WDAYS[now.getDay()]})`;
   const w = document.getElementById('pass-clock-waiting'); if(w) w.textContent = t;
   const d = document.getElementById('pass-clock-driving'); if(d) d.textContent = t;
+  const dw = document.getElementById('pass-date-waiting'); if(dw) dw.textContent = ds;
+  const dd = document.getElementById('pass-date-driving'); if(dd) dd.textContent = ds;
 }
 
 function syncPassengerFromFirebase() {
   if (!window.mdb) { setTimeout(syncPassengerFromFirebase, 1000); return; }
   window.mdb.ref('kouki-app/drive_state').on('value', snap => {
-    const state = snap.val();
-    if (!state) return;
+    const state = snap.val(); if (!state) return;
     updatePassengerView(state);
   });
+  // ロック状態をFirebaseからも同期
+  window.mdb.ref('kouki-app/pass_lock').on('value', snap => {
+    const locked = snap.val() === true;
+    _passLocked = locked;
+    localStorage.setItem(PASS_LOCK_KEY, locked);
+    applyPassengerLock(locked);
+    // 運転タブのロックボタン更新
+    const btn = document.getElementById('drive-lock-btn');
+    if (btn) btn.textContent = locked ? '🔒 乗客画面ロック中（解除する）' : '🔓 乗客画面ロック';
+  });
 }
+
+function applyPassengerLock(locked) {
+  const overlay = document.getElementById('pass-lock-overlay');
+  if (!overlay) return;
+  overlay.style.display = locked ? 'flex' : 'none';
+}
+
+// 運転タブからロック操作
+window.togglePassengerLock = function() {
+  _passLocked = !_passLocked;
+  localStorage.setItem(PASS_LOCK_KEY, _passLocked);
+  applyPassengerLock(_passLocked);
+  const btn = document.getElementById('drive-lock-btn');
+  if (btn) btn.textContent = _passLocked ? '🔒 乗客画面ロック中（解除する）' : '🔓 乗客画面ロック';
+  // Firebaseにも送信
+  if (window.mdb) window.mdb.ref('kouki-app/pass_lock').set(_passLocked);
+};
 
 function updatePassengerView(state) {
   const t = PASS_TEXTS[_passLang] || PASS_TEXTS.ja;
@@ -1441,38 +1515,31 @@ function updatePassengerView(state) {
     if (destEl) destEl.textContent = `${t.dest}：${state.destName || ''}`;
     const distEl = document.getElementById('pass-drive-dist');
     if (distEl) distEl.textContent = state.distM > 1000 ? `${(state.distM/1000).toFixed(1)} km` : `${state.distM} m`;
-    // 料金
     const fareEl = document.getElementById('pass-fare-display');
     if (fareEl) fareEl.textContent = `¥${(state.fare||0).toLocaleString()}`;
-    // 到着予想（速度から計算、なければ距離÷40km/h）
+    const fareKmEl = document.getElementById('pass-fare-km');
+    if (fareKmEl) fareKmEl.textContent = `${((state.fare||0)/500).toFixed(2)} km走行`;
     if (state.distM) {
-      const etaMins = Math.ceil((state.distM / 1000) / 40 * 60);
-      const now = new Date();
-      const eta = new Date(now.getTime() + etaMins * 60000);
+      const etaMins = Math.max(1, Math.ceil((state.distM / 1000) / 40 * 60));
+      const eta = new Date(Date.now() + etaMins * 60000);
       const etaStr = `${String(eta.getHours()).padStart(2,'0')}:${String(eta.getMinutes()).padStart(2,'0')}`;
       const etaEl = document.getElementById('pass-eta-time');
       const etaMinEl = document.getElementById('pass-eta-min');
       if (etaEl) etaEl.textContent = etaStr;
-      if (etaMinEl) etaMinEl.textContent = `約${etaMins}分`;
+      if (etaMinEl) etaMinEl.textContent = etaMins < 60 ? `約${etaMins}分` : `約${Math.floor(etaMins/60)}時間${etaMins%60}分`;
     }
-    // アイコンアニメーション
     if (state.distM <= 500) {
       const icon = document.getElementById('pass-drive-icon');
       if (icon) icon.textContent = '🏁';
     }
   } else if (state.status === 'arrived') {
-    waiting.style.display = 'none'; driving.style.display = 'none';
-    arrived.style.display = 'flex';
-    const destEl = document.getElementById('pass-arrived-dest');
-    if (destEl) destEl.textContent = state.destName || '';
-    const fareEl = document.getElementById('pass-arrived-fare');
-    if (fareEl) fareEl.textContent = `¥${(state.fare||0).toLocaleString()}`;
+    waiting.style.display = 'none'; driving.style.display = 'none'; arrived.style.display = 'flex';
+    const destEl = document.getElementById('pass-arrived-dest'); if (destEl) destEl.textContent = state.destName || '';
+    const fareEl = document.getElementById('pass-arrived-fare'); if (fareEl) fareEl.textContent = `¥${(state.fare||0).toLocaleString()}`;
   }
 }
 
-window.openPassengerTab = function() {
-  switchTab('passenger');
-};
+window.openPassengerTab = function() { switchTab('passenger'); };
 
 window.saveFareToggle = function() {
   const checked = document.getElementById('settings-fare-toggle').checked;
@@ -1481,7 +1548,6 @@ window.saveFareToggle = function() {
   const knob = document.getElementById('settings-fare-knob');
   if (slider) slider.style.background = checked ? 'var(--accent)' : 'var(--border2)';
   if (knob) knob.style.left = checked ? '25px' : '3px';
-  // 乗客画面に即反映
   const fareArea = document.getElementById('pass-fare-area');
   if (fareArea) fareArea.style.display = checked ? 'block' : 'none';
 };
