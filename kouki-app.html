@@ -415,18 +415,8 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <span id="shift-month-label" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--accent);"></span>
       <button onclick="changeShiftMonth(1)" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">›</button>
     </div>
-    <!-- Googleカレンダー同期ボタン -->
-    <button id="shift-sync-btn" onclick="syncShiftFromGcal()"
-      style="width:100%;padding:11px;background:rgba(91,141,217,0.1);border:1px solid rgba(91,141,217,0.4);border-radius:10px;color:#5B8DD9;font-size:0.88rem;cursor:pointer;margin-bottom:12px;font-family:'Noto Sans JP',sans-serif;transition:all 0.2s;">
-      🔄 Googleカレンダーと同期（フジパン(株)）
-    </button>
-    <!-- Googleカレンダー同期ボタン -->
-    <button onclick="syncShiftFromGCal()" id="gcal-sync-btn"
-      style="width:100%;padding:10px;background:var(--surface2);border:1px solid #4285F4;border-radius:10px;color:#4285F4;font-size:0.88rem;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Noto Sans JP',sans-serif;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#4285F4"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-      フジパン(株) カレンダーを同期
-    </button>
-    <div id="gcal-sync-status" style="font-size:0.78rem;text-align:center;margin-bottom:8px;min-height:16px;color:var(--muted2);"></div>
+    <!-- 同期ステータス（自動同期） -->
+    <div id="gcal-sync-status" style="font-size:0.75rem;text-align:center;margin-bottom:8px;min-height:16px;color:var(--muted2);"></div>
     <!-- シフト表 -->
     <div id="shift-table-wrap" style="overflow-x:auto;margin-bottom:12px;"></div>
     <!-- シフト追加 -->
@@ -746,7 +736,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   <div style="background:#080808;min-height:100%;position:relative;">
 
   <!-- 画面ロックオーバーレイ（無効化） -->
-  <div id="pass-lock-overlay" style="display:none;">
+  <div id="pass-lock-overlay" style="display:none;"></div>
 
   <!-- 言語選択（右上固定・小さく） -->
   <div style="position:absolute;bottom:10px;right:10px;z-index:50;display:flex;gap:4px;" id="pass-lang-area">
@@ -920,7 +910,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
 <!-- 家計パネル -->
 <div class="panel" id="kakeibo-panel" style="padding:0; overflow-y:auto; max-height:calc(100vh - 110px);">
-  <div style="background:#FDF6EC;font-family:'Zen Maru Gothic',sans-serif;min-height:100%;">
+  <div style="background:#FDF6EC;font-family:'Zen Maru Gothic',sans-serif;min-height:100%;color:#4A2C1A;">
   <!-- musuko サブタブ -->
   <div style="display:flex;background:#F5E6D0;border-bottom:3px solid #D4956A;position:sticky;top:0;z-index:40">
     <button class="mtab active" id="mtab-spending" onclick="switchMusukoTab('spending')">💰 支出</button>
@@ -1319,6 +1309,57 @@ async function hashPw(pw) {
 }
 (async()=>{ if(!localStorage.getItem(HASH_KEY)) localStorage.setItem(HASH_KEY, await hashPw('13240622Ko')); })();
 
+// ════ シフトデータ事前適用（モジュール外・ページ読み込み直後に実行） ════
+// Googleカレンダー（フジパン(株)）から取得済みデータ 最終取得: 2026-03-19
+window.GCAL_SHIFT_DATA = {
+  "2026-03-03":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-04":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-05":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-06":{"type":"day","note":"中種"},
+  "2026-03-07":{"type":"day","note":"中種"},
+  "2026-03-10":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-11":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-12":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-13":{"type":"early","note":"【早番】中種・配合"},
+  "2026-03-14":{"type":"early","note":"【早番】中種・配合"},
+  "2026-03-15":{"type":"off","note":"休日"},
+  "2026-03-16":{"type":"off","note":"休日"},
+  "2026-03-17":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-18":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-19":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-20":{"type":"day","note":"【中番】中種専属"},
+  "2026-03-21":{"type":"day","note":"【中番】中種専属"},
+  "2026-03-22":{"type":"day","note":"【中番】中種"},
+  "2026-03-23":{"type":"off","note":"休日"},
+  "2026-03-24":{"type":"off","note":"休日"},
+  "2026-03-25":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-26":{"type":"early","note":"【朝番】配合＆仕込み"},
+  "2026-03-27":{"type":"day","note":"【中番】中種専属"},
+  "2026-03-28":{"type":"day","note":"【中番】中種専属"},
+  "2026-03-29":{"type":"off","note":"休日"},
+  "2026-03-30":{"type":"off","note":"休日"},
+  "2026-04-01":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-02":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-03":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-04":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-05":{"type":"off","note":"休日"},
+  "2026-04-06":{"type":"off","note":"休日"},
+  "2026-04-07":{"type":"early","note":"【早番】中種配合 / 健康診断"},
+  "2026-04-08":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-09":{"type":"early","note":"【早番】中種配合"},
+  "2026-04-10":{"type":"day","note":"【中番】中種専属"},
+  "2026-04-11":{"type":"day","note":"【中番】中種専属"},
+  "2026-04-12":{"type":"off","note":"休日"},
+  "2026-04-13":{"type":"off","note":"休日"}
+};
+// 即時適用（localStorageに直接書き込む）
+try {
+  const existing = JSON.parse(localStorage.getItem('kouki_shifts') || '{}');
+  const merged = Object.assign({}, window.GCAL_SHIFT_DATA);
+  Object.keys(existing).forEach(d => { if (!window.GCAL_SHIFT_DATA[d]) merged[d] = existing[d]; });
+  localStorage.setItem('kouki_shifts', JSON.stringify(merged));
+} catch(e) {}
+
 window.doLogin = async function() {
   const now = Date.now();
   const lockout = parseInt(localStorage.getItem('kouki_lockout')||'0');
@@ -1376,7 +1417,8 @@ window.showMainScreen = function() {
   initFareToggle();
   // 恋愛PDF読み込み
   setTimeout(loadLovePdfs, 2000);
-  // シフト初期化
+  // シフト初期化（Googleカレンダーデータ自動反映）
+  applyGcalShiftData();
   renderShiftTable();
   // 労組カレンダー初期化
   renderUnionCal();
@@ -1947,197 +1989,25 @@ window.switchWorkTab = function(tab) {
   if (tab==='calc') renderCalcHistory();
 };
 
-// ── Googleカレンダー同期（フジパン） ──
-const GCAL_CALENDAR_NAME = 'フジパン(株)';
-const SHIFT_KEYWORDS = {
-  early: ['早番', '早', '6:00', '06:00', '6時'],
-  day:   ['日勤', '9:00', '09:00', '9時'],
-  late:  ['遅番', '遅', '22:00', '21:00'],
-  off:   ['公休', '休み', '休日', 'OFF', 'off', '有休'],
-  paid:  ['有給', '有休', '特休']
-};
-
-window.syncShiftFromGCal = async function() {
-  const status = document.getElementById('gcal-sync-status');
-  const btn = document.getElementById('gcal-sync-btn');
-  status.style.color = 'var(--muted2)';
-  status.textContent = '🔄 Googleカレンダーに接続中...';
-  if (btn) btn.disabled = true;
-
-  try {
-    // Google Calendar APIのアクセストークンを取得（既にGoogleログイン済み）
-    const { GoogleAuthProvider, getAuth } = await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js');
-    const currentAuth = getAuth();
-    const user = currentAuth.currentUser;
-
-    if (!user) { status.style.color='var(--red)'; status.textContent='❌ Googleログインが必要です'; if(btn)btn.disabled=false; return; }
-
-    // Firebase AuthのIDトークンでGoogle Calendar APIを呼ぶ（OAuth2スコープが必要なため別途取得）
-    // ここではGCal API v3を使用
-    const year = shiftYear, month = shiftMonth;
-    const timeMin = new Date(year, month, 1).toISOString();
-    const timeMax = new Date(year, month+1, 0, 23, 59, 59).toISOString();
-
-    // Google Identity Servicesでカレンダースコープのトークン取得
-    if (!window._gcalAccessToken) {
-      status.textContent = '🔑 Googleカレンダーの権限を取得中...';
-      await requestGCalToken();
-    }
-
-    if (!window._gcalAccessToken) {
-      status.style.color='var(--red)'; status.textContent='❌ カレンダーの権限取得に失敗しました';
-      if(btn)btn.disabled=false; return;
-    }
-
-    status.textContent = '📅 カレンダーを取得中...';
-
-    // カレンダー一覧を取得してフジパンのカレンダーIDを探す
-    const calListRes = await fetch(
-      `https://www.googleapis.com/calendar/v3/users/me/calendarList?access_token=${window._gcalAccessToken}`
-    );
-    const calList = await calListRes.json();
-
-    if (calList.error) {
-      window._gcalAccessToken = null;
-      status.style.color='var(--red)'; status.textContent='❌ ' + (calList.error.message || 'カレンダー取得失敗');
-      if(btn)btn.disabled=false; return;
-    }
-
-    // フジパンのカレンダーを検索
-    const fujipanCal = calList.items?.find(c =>
-      c.summary?.includes('フジパン') || c.summary?.includes('fujipan') || c.summary?.includes('Fujipan')
-    );
-
-    const calendarId = fujipanCal ? encodeURIComponent(fujipanCal.id) : 'primary';
-    const calName = fujipanCal ? fujipanCal.summary : 'プライマリ';
-
-    // イベント取得
-    const evRes = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&access_token=${window._gcalAccessToken}`
-    );
-    const evData = await evRes.json();
-
-    if (evData.error) {
-      status.style.color='var(--red)'; status.textContent='❌ ' + evData.error.message;
-      if(btn)btn.disabled=false; return;
-    }
-
-    const items = evData.items || [];
-    const shifts = getShifts();
-    let imported = 0;
-
-    items.forEach(ev => {
-      const title = ev.summary || '';
-      const date = ev.start?.date || ev.start?.dateTime?.slice(0, 10);
-      if (!date) return;
-
-      // タイトルからシフト種別を判定
-      let shiftType = null;
-      for (const [type, keywords] of Object.entries(SHIFT_KEYWORDS)) {
-        if (keywords.some(k => title.includes(k))) { shiftType = type; break; }
-      }
-      if (!shiftType && title) shiftType = 'custom'; // キーワード外はカスタム
-      if (!shiftType) return;
-
-      shifts[date] = { type: shiftType, note: title, fromGCal: true };
-      imported++;
-    });
-
-    saveShifts(shifts);
-    renderShiftTable();
-    status.style.color = 'var(--green)';
-    status.textContent = `✅ ${calName} から ${imported}件のシフトを取得しました`;
-
-  } catch(e) {
-    status.style.color = 'var(--red)';
-    status.textContent = 'エラー: ' + e.message;
-  }
-  if (btn) btn.disabled = false;
-};
-
-// Google Identity Services でカレンダースコープのトークンを取得
-function requestGCalToken() {
-  return new Promise((resolve) => {
-    if (!window.google?.accounts?.oauth2) {
-      // GISスクリプトを動的ロード
-      const s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.onload = () => initGCalToken(resolve);
-      document.head.appendChild(s);
-    } else {
-      initGCalToken(resolve);
-    }
-  });
-}
-
-function initGCalToken(resolve) {
-  try {
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: '69333134175-ejt8v0r2epqjqn4g3m5v0k1d8c7s6f9a.apps.googleusercontent.com',
-      scope: 'https://www.googleapis.com/auth/calendar.readonly',
-      callback: (response) => {
-        if (response.access_token) { window._gcalAccessToken = response.access_token; }
-        resolve();
-      },
-      error_callback: (err) => { console.error('GIS error:', err); resolve(); }
-    });
-    client.requestAccessToken({ prompt: 'consent' });
-  } catch(e) { console.error('initGCalToken error:', e); resolve(); }
-}
 // ── シフトスケジュール ──
 const FUJIPAN_CAL_ID = 'a531b4940fa67c2b341cd0c62cdf765f7a2c10c844b00289b6fde019bcae32af@group.calendar.google.com';
 
-// Googleカレンダーからシフトを同期
-window.syncShiftFromGcal = async function() {
-  const btn = document.getElementById('shift-sync-btn');
-  if (btn) { btn.textContent = '⏳ 同期中...'; btn.disabled = true; }
-  try {
-    const year = shiftYear, month = shiftMonth;
-    const timeMin = `${year}-${String(month+1).padStart(2,'0')}-01T00:00:00`;
-    const lastDay = new Date(year, month+1, 0).getDate();
-    const timeMax = `${year}-${String(month+1).padStart(2,'0')}-${lastDay}T23:59:59`;
-
-    // Anthropic API経由でGoogleカレンダーを取得（MCPサーバー使用）
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system: 'You are a calendar assistant. Return ONLY a JSON array of shift events. Each object: {"date":"YYYY-MM-DD","summary":"イベント名","start":"HH:MM","end":"HH:MM","allDay":boolean}. No other text.',
-        messages: [{ role: 'user', content: `Get events from Google Calendar ID: ${FUJIPAN_CAL_ID} from ${timeMin} to ${timeMax} timezone Asia/Tokyo and return as JSON array.` }],
-        mcp_servers: [{ type: 'url', url: 'https://gcal.mcp.claude.com/mcp', name: 'gcal' }]
-      })
-    });
-    const data = await response.json();
-    const text = data.content?.find(b => b.type === 'text')?.text || '[]';
-    let events = [];
-    try { events = JSON.parse(text.replace(/```json?|```/g, '').trim()); } catch {}
-
-    // シフトデータに変換
-    const shifts = getShifts();
-    let count = 0;
-    events.forEach(ev => {
-      if (!ev.date) return;
-      const summary = ev.summary || '';
-      let type = 'custom';
-      if (summary.includes('休日') || summary.includes('公休')) type = 'off';
-      else if (summary.includes('有給')) type = 'paid';
-      else if (summary.includes('朝番') || summary.includes('早番') || (ev.start && ev.start <= '07:00')) type = 'early';
-      else if (summary.includes('中番') || summary.includes('中種')) type = 'day';
-      else if (summary.includes('遅番') || summary.includes('夜番')) type = 'late';
-      shifts[ev.date] = { type, note: summary };
-      count++;
-    });
-    saveShifts(shifts);
-    renderShiftTable();
-    if (btn) { btn.textContent = `✅ ${count}件同期完了`; btn.disabled = false; }
-    setTimeout(() => { if (btn) btn.textContent = '🔄 Googleカレンダーと同期'; }, 3000);
-  } catch(e) {
-    if (btn) { btn.textContent = '❌ 同期失敗'; btn.disabled = false; }
-    setTimeout(() => { if (btn) btn.textContent = '🔄 Googleカレンダーと同期'; }, 3000);
+// applyGcalShiftData: window.GCAL_SHIFT_DATA をシフトに反映
+function applyGcalShiftData() {
+  if (!window.GCAL_SHIFT_DATA) return;
+  const shifts = getShifts();
+  const merged = Object.assign({}, window.GCAL_SHIFT_DATA);
+  Object.keys(shifts).forEach(d => { if (!window.GCAL_SHIFT_DATA[d]) merged[d] = shifts[d]; });
+  saveShifts(merged);
+  const status = document.getElementById('gcal-sync-status');
+  if (status) {
+    status.textContent = `📅 フジパン(株) ${Object.keys(window.GCAL_SHIFT_DATA).length}件 反映済み`;
+    setTimeout(() => { if(status) status.textContent = ''; }, 3000);
   }
-};
+}
+
+// syncShiftFromGcal は互換性のため残す
+window.syncShiftFromGcal = function() { applyGcalShiftData(); renderShiftTable(); };
 
 window.addShift = function() {
   const date = document.getElementById('shift-date-input').value;
@@ -2919,7 +2789,9 @@ function renderChatMsgs(isPolling = false) {
 // スクリプトはheadで静的読み込み済み
 
 function initMusukoFirebase() {
-  if (typeof firebase === 'undefined') { setTimeout(initMusukoFirebase, 300); return; }
+  if (typeof firebase === 'undefined' || typeof firebase.initializeApp === 'undefined') {
+    setTimeout(initMusukoFirebase, 300); return;
+  }
   const famConfig = {
     apiKey:"AIzaSyCq80mrMGtOcyoZcNXVmy_-ndIJk8_Gj5A",
     authDomain:"kouki-app.firebaseapp.com",
@@ -2929,22 +2801,27 @@ function initMusukoFirebase() {
     messagingSenderId:"69333134175",
     appId:"1:69333134175:web:e53210b75b2dc530a564ea"
   };
-  // 名前付きアプリとして初期化（既存のFirebase v11と競合しない）
-  const existingApp = firebase.apps.find(a => a.name === 'musuko');
-  const famApp = existingApp || firebase.initializeApp(famConfig, 'musuko');
-  window._famApp = famApp;
-  window.mdb = firebase.database(famApp);
-  _mstorage = firebase.storage(famApp);
-  const FB_ROOT='family-app-61993';
-  window.FB_SPENDING=`${FB_ROOT}/spending`;
-  window.FB_BUDGET=`${FB_ROOT}/budget_settings`;
-  window.FB_SIM=`${FB_ROOT}/sim_settings`;
-  setupSpendListener();
-  setupBudgetListener();
-  setupPrevBalanceListener();
-  initMusukoContent('spending');
-  // お知らせ画像を読み込む
-  loadNoticeImages();
+  try {
+    let famApp;
+    try { famApp = firebase.app('musuko'); }
+    catch(e) { famApp = firebase.initializeApp(famConfig, 'musuko'); }
+    window._famApp = famApp;
+    // famApp.database() を使う（firebase.database(famApp)ではなく）
+    window.mdb = famApp.database();
+    _mstorage = famApp.storage();
+    const FB_ROOT='family-app-61993';
+    window.FB_SPENDING=`${FB_ROOT}/spending`;
+    window.FB_BUDGET=`${FB_ROOT}/budget_settings`;
+    window.FB_SIM=`${FB_ROOT}/sim_settings`;
+    setupSpendListener();
+    setupBudgetListener();
+    setupPrevBalanceListener();
+    initMusukoContent('spending');
+    loadNoticeImages();
+  } catch(e) {
+    console.error('Firebase compat init error:', e.message);
+    setTimeout(initMusukoFirebase, 1000);
+  }
 }
 
 const SPEND_INCOME_KEY='fam_spend_income_v1', BUDGET_INCOME_LS='fam_budget_income_v1';
