@@ -6,7 +6,6 @@
 <title>功稀のページ</title>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500&family=DM+Mono:wght@400;500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -269,18 +268,20 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   <div class="login-box">
     <div class="login-logo">功稀</div>
     <div class="login-sub">Personal Dashboard</div>
-
-    <div class="login-section-label">— Googleアカウント認証専用 —</div>
-
-    <button class="google-btn" id="google-login-btn" onclick="doGoogleLogin()">
+    <div class="login-section-label">— パスワードでログイン —</div>
+    <div class="login-input-wrap">
+      <input type="password" class="login-input" id="pw-input" placeholder="パスワードを入力"
+        autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="toggle-pw" onclick="togglePw()">👁</button>
+    </div>
+    <button class="login-btn" onclick="doLogin()">ログイン</button>
+    <div class="divider">または</div>
+    <button class="google-btn" onclick="doGoogleLogin()">
       <div class="google-icon"></div>Googleアカウントでログイン
     </button>
-
-    <div style="text-align:center">
-      <span class="sync-badge">🔒 許可済みアカウントのみ</span>
-    </div>
-
+    <div style="text-align:center"><span class="sync-badge">☁️ クラウド同期対応</span></div>
     <div class="login-error" id="login-error"></div>
+    <div class="login-attempts" id="login-attempts"></div>
   </div>
 </div>
 
@@ -331,17 +332,17 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   </div>
 
   <div class="panel" id="calendar-panel">
-    <!-- お知らせ画像エリア -->
+    <!-- お知らせPDFエリア -->
     <div id="notice-area" style="margin-bottom:16px;">
       <div class="sec-title">📢 お知らせ</div>
-      <div id="notice-images" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="notice-images" style="display:flex;flex-direction:column;gap:14px;"></div>
       <!-- 管理者モード：アップロードボタン -->
       <div id="notice-admin" style="display:none;margin-top:10px;">
         <button onclick="document.getElementById('notice-file-input').click()"
           class="add-ev-btn" style="border-color:var(--accent);color:var(--accent);">
-          🔄 画像を差し替え（複数選択可・名前順）
+          📄 PDFを差し替え（最大9ページ・名前順）
         </button>
-        <input type="file" id="notice-file-input" accept="image/*" multiple style="display:none" onchange="uploadNoticeImages(this)">
+        <input type="file" id="notice-file-input" accept="application/pdf" multiple style="display:none" onchange="uploadNoticeImages(this)">
         <div id="notice-upload-status" style="font-size:0.78rem;text-align:center;margin-top:6px;color:var(--muted2);"></div>
       </div>
       <button onclick="toggleAdminMode()" id="admin-toggle-btn"
@@ -1195,13 +1196,17 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 </div>
 <div id="mtoast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#4A2C1A;color:white;padding:10px 20px;border-radius:20px;font-size:0.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999"></div>
 
-<!-- Firebase モジュール -->
+<!-- Firebase Auth モジュール -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
-  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot }
-  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import {
+  getAuth, GoogleAuthProvider,
+  signInWithPopup, signInWithRedirect, getRedirectResult,
+  signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import {
+  getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCq80mrMGtOcyoZcNXVmy_-ndIJk8_Gj5A",
@@ -1213,40 +1218,152 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
 const provider = new GoogleAuthProvider();
 
-// ─── Auth状態監視 ───
-const ALLOWED_UID = 'BrDyd83L3HZbQom14auP7pma7sy2';
+// ════ 権限チェック（Realtime DB の allowUsers / admins を参照） ════
+// UID直指定フォールバック（DBに登録できない緊急時用）
+const FALLBACK_ALLOWED_UIDS = ['BrDyd83L3HZbQom14auP7pma7sy2'];
+const FALLBACK_ADMIN_UIDS   = ['BrDyd83L3HZbQom14auP7pma7sy2'];
 
-onAuthStateChanged(auth, (user) => {
-  document.getElementById('loading-screen').style.display = 'none';
-  if (user) {
-    if (user.uid !== ALLOWED_UID) {
-      signOut(auth);
+async function checkPermission(uid) {
+  // Realtime DB compat SDK (window.mdb) が初期化されるまで最大3秒待つ
+  for (let i = 0; i < 30; i++) {
+    if (window._famApp) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  try {
+    const db = window._famApp ? window._famApp.database() : null;
+    if (db) {
+      const [allowSnap, adminSnap] = await Promise.all([
+        db.ref(`allowUsers/${uid}`).once('value'),
+        db.ref(`admins/${uid}`).once('value')
+      ]);
+      return {
+        allowed: allowSnap.val() === true,
+        isAdmin: adminSnap.val() === true
+      };
+    }
+  } catch(e) {
+    console.warn('権限チェックDB失敗、フォールバックを使用:', e.message);
+  }
+  // DB未接続時はUID直指定フォールバック
+  return {
+    allowed: FALLBACK_ALLOWED_UIDS.includes(uid),
+    isAdmin: FALLBACK_ADMIN_UIDS.includes(uid)
+  };
+}
+
+// ════ Auth 状態監視 ════
+// getRedirectResult を先に await してからAuth監視を開始
+// （スマホでリダイレクトログイン後のチラつき・ログイン画面消え防止）
+(async () => {
+  try { await getRedirectResult(auth); } catch(e) { /* リダイレクトなし or エラーは無視 */ }
+
+  onAuthStateChanged(auth, async (user) => {
+    document.getElementById('loading-screen').style.display = 'none';
+
+    if (!user) {
+      window._uid = null;
+      window._useFirestore = false;
+      window._isAdmin = false;
+      // パスワードログイン済みの場合はそのまま表示
+      if (sessionStorage.getItem('kouki_session') === 'ok') {
+        window._uid = 'local'; window._isAdmin = true;
+        loadLocal(); showMainScreen();
+        return;
+      }
       document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('login-error').textContent = '⛔ このアカウントはアクセスできません';
+      document.getElementById('main-screen').style.display  = 'none';
       return;
     }
-    window._uid = user.uid;
+
+    // ログイン済み → 権限チェック
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '🔍 アクセス権を確認中...';
+
+    const { allowed, isAdmin } = await checkPermission(user.uid);
+
+    if (!allowed) {
+      await signOut(auth);
+      errEl.textContent = '⛔ このアカウントはアクセスできません';
+      document.getElementById('login-screen').style.display = 'flex';
+      return;
+    }
+
+    // 権限OK
+    errEl.textContent = '';
+    window._uid          = user.uid;
     window._useFirestore = true;
+    window._isAdmin      = isAdmin;
+
     if (user.photoURL) {
       const av = document.getElementById('user-avatar');
-      av.src = user.photoURL; av.style.display = 'block';
+      av.src = user.photoURL;
+      av.style.display = 'block';
     }
+
+    applyAdminUI(isAdmin);
     setupSync();
     showMainScreen();
-  } else {
-    window._uid = null;
-    window._useFirestore = false;
-    if (sessionStorage.getItem('kouki_session') === 'ok') {
-      loadLocal(); showMainScreen();
+  });
+})();
+
+// ════ 管理者 UI 制御 ════
+function applyAdminUI(isAdmin) {
+  // 管理者モードボタン：非管理者には非表示
+  const adminBtns = document.querySelectorAll(
+    '#admin-toggle-btn, #love-admin-btn, #notice-admin, #love-admin'
+  );
+  adminBtns.forEach(el => {
+    if (el) el.style.display = isAdmin ? '' : 'none';
+  });
+}
+
+// アップロード関数に管理者チェックを付与するラッパー
+window._adminGuard = function(fn) {
+  if (!window._isAdmin) {
+    alert('管理者権限が必要です');
+    return;
+  }
+  fn();
+};
+
+// ════ Googleログイン ════
+window.doGoogleLogin = async () => {
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  try {
+    if (isMobile) {
+      await signInWithRedirect(auth, provider);
     } else {
-      document.getElementById('login-screen').style.display = 'flex';
+      await signInWithPopup(auth, provider);
+    }
+  } catch(e) {
+    if (e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
+      errEl.textContent = 'ログイン失敗: ' + (e.code || e.message);
     }
   }
-});
+};
+
+// ════ ログアウト（Google + パスワード両対応） ════
+window.doLogout = async () => {
+  try { await signOut(auth); } catch(e) { console.error(e); }
+  sessionStorage.removeItem('kouki_session');
+  window._uid          = null;
+  window._useFirestore = false;
+  window._isAdmin      = false;
+  document.getElementById('main-screen').style.display  = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  const pwInp = document.getElementById('pw-input');
+  if (pwInp) pwInp.value = '';
+  document.getElementById('login-error').textContent    = '';
+  document.getElementById('login-attempts').textContent = '';
+  const av = document.getElementById('user-avatar');
+  if (av) av.style.display = 'none';
+};
 
 // ─── Firestoreリアルタイム同期 ───
 function setupSync() {
@@ -1279,7 +1396,6 @@ function setupSync() {
     if(typeof renderReminders==='function') renderReminders(); setSS('synced');
   }, ()=>setSS('offline'));
 
-  // 家族共有カレンダー
   onSnapshot(collection(db,'shared','family','events'), snap => {
     window._famEvents = snap.docs.map(d=>({id:d.id,...d.data()}));
     if(typeof renderFamCalendar==='function'){renderFamCalendar();renderFamEvents();}
@@ -1299,8 +1415,6 @@ window.fsDel = async (col, id) => {
   try { await deleteDoc(doc(db,'users',window._uid,col,id)); }
   catch(e) { console.error(e); }
 };
-
-// 家族共有Firestoreヘルパー（shared/family/配下）
 window.fsSetShared = async (col, id, data) => {
   if(!window._useFirestore) return;
   try { await setDoc(doc(db,'shared','family',col,id), data, {merge:true}); }
@@ -1311,52 +1425,9 @@ window.fsDelShared = async (col, id) => {
   try { await deleteDoc(doc(db,'shared','family',col,id)); }
   catch(e) { console.error(e); }
 };
-
-// ─── Googleログイン ───
-// リダイレクト結果を最初に処理（スマホでのGoogleログイン後）
-getRedirectResult(auth).catch(() => {});
-
-window.doGoogleLogin = async () => {
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  try {
-    if (isMobile) {
-      // スマホはリダイレクト方式（ポップアップはブロックされる）
-      await signInWithRedirect(auth, provider);
-    } else {
-      await signInWithPopup(auth, provider);
-    }
-  } catch(e) {
-    if (e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
-      errEl.textContent = 'ログイン失敗: ' + (e.code || e.message);
-    }
-  }
-};
-
-// ─── ログアウト ───
-window.doLogout = async () => {
-  if(window._useFirestore) { await signOut(auth); }
-  else { sessionStorage.removeItem('kouki_session'); }
-  window._uid=null; window._useFirestore=false;
-  document.getElementById('main-screen').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('pw-input').value='';
-  document.getElementById('login-error').textContent='';
-  document.getElementById('user-avatar').style.display='none';
-};
 </script>
 
 <script>
-// ════ パスワード認証 ════
-const HASH_KEY = 'kouki_pw_hash';
-const WEEKDAYS = ['日','月','火','水','木','金','土'];
-
-async function hashPw(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw+'kouki_salt_2024'));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-(async()=>{ if(!localStorage.getItem(HASH_KEY)) localStorage.setItem(HASH_KEY, await hashPw('13240622Ko')); })();
 
 // ════ シフトデータ事前適用（モジュール外・ページ読み込み直後に実行） ════
 // Googleカレンダー（フジパン(株)）から取得済みデータ 最終取得: 2026-03-19
@@ -1409,6 +1480,17 @@ try {
   localStorage.setItem('kouki_shifts', JSON.stringify(merged));
 } catch(e) {}
 
+const WEEKDAYS = ['日','月','火','水','木','金','土'];
+
+// ════ パスワード認証 ════
+const HASH_KEY = 'kouki_pw_hash';
+
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw+'kouki_salt_2024'));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+(async()=>{ if(!localStorage.getItem(HASH_KEY)) localStorage.setItem(HASH_KEY, await hashPw('13240622Ko')); })();
+
 window.doLogin = async function() {
   const now = Date.now();
   const lockout = parseInt(localStorage.getItem('kouki_lockout')||'0');
@@ -1421,7 +1503,7 @@ window.doLogin = async function() {
   if(entered === localStorage.getItem(HASH_KEY)) {
     localStorage.removeItem('kouki_attempts'); localStorage.removeItem('kouki_lockout');
     sessionStorage.setItem('kouki_session','ok');
-    window._uid='local'; window._useFirestore=false;
+    window._uid='local'; window._useFirestore=false; window._isAdmin=true;
     loadLocal(); showMainScreen();
   } else {
     const a = (parseInt(localStorage.getItem('kouki_attempts')||'0'))+1;
@@ -2122,6 +2204,7 @@ function loadLovePdfs() {
 }
 
 window.uploadLovePdfs = async function(input) {
+  if (!window._isAdmin) { alert('管理者権限が必要です'); input.value=''; return; }
   const files = Array.from(input.files).slice(0, 3);
   if (!files.length) return;
   const status = document.getElementById('love-upload-status');
@@ -2856,35 +2939,23 @@ window.downloadApp = async function() {
 };
 
 // パスワード変更
+
 window.changePassword = async function() {
   const current = document.getElementById('settings-pw-current').value;
-  const newPw = document.getElementById('settings-pw-new').value;
+  const newPw   = document.getElementById('settings-pw-new').value;
   const confirm = document.getElementById('settings-pw-confirm').value;
-  const msg = document.getElementById('settings-pw-msg');
-
-  if (!current || !newPw || !confirm) {
-    msg.style.color = 'var(--red)'; msg.textContent = '全て入力してください'; return;
-  }
-  if (newPw !== confirm) {
-    msg.style.color = 'var(--red)'; msg.textContent = '新しいパスワードが一致しません'; return;
-  }
-  if (newPw.length < 6) {
-    msg.style.color = 'var(--red)'; msg.textContent = '6文字以上で設定してください'; return;
-  }
-
+  const msg     = document.getElementById('settings-pw-msg');
+  if (!current || !newPw || !confirm) { msg.style.color='var(--red)'; msg.textContent='全て入力してください'; return; }
+  if (newPw !== confirm) { msg.style.color='var(--red)'; msg.textContent='新しいパスワードが一致しません'; return; }
+  if (newPw.length < 6) { msg.style.color='var(--red)'; msg.textContent='6文字以上で設定してください'; return; }
   const currentHash = await hashPw(current);
-  const stored = localStorage.getItem('kouki_pw_hash');
-  if (currentHash !== stored) {
-    msg.style.color = 'var(--red)'; msg.textContent = '現在のパスワードが違います'; return;
-  }
-
-  const newHash = await hashPw(newPw);
-  localStorage.setItem('kouki_pw_hash', newHash);
-  msg.style.color = 'var(--green)'; msg.textContent = '✅ パスワードを変更しました';
-  document.getElementById('settings-pw-current').value = '';
-  document.getElementById('settings-pw-new').value = '';
-  document.getElementById('settings-pw-confirm').value = '';
-  setTimeout(() => { msg.textContent = ''; }, 3000);
+  if (currentHash !== localStorage.getItem(HASH_KEY)) { msg.style.color='var(--red)'; msg.textContent='現在のパスワードが違います'; return; }
+  localStorage.setItem(HASH_KEY, await hashPw(newPw));
+  msg.style.color='var(--green)'; msg.textContent='✅ パスワードを変更しました';
+  document.getElementById('settings-pw-current').value='';
+  document.getElementById('settings-pw-new').value='';
+  document.getElementById('settings-pw-confirm').value='';
+  setTimeout(()=>{ msg.textContent=''; }, 3000);
 };
 
 // LINE URL保存
@@ -3753,9 +3824,12 @@ function loadNoticeImages() {
     container.innerHTML = '';
     items.forEach(([id, item]) => {
       const div = document.createElement('div');
-      div.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.15);';
+      div.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.15);background:var(--surface2);';
+      // PDFファイル名ラベル
+      const nameLabel = item.name ? `<div style="font-size:0.75rem;color:var(--muted2);padding:6px 10px 2px;display:flex;align-items:center;gap:6px;"><span>📄</span><span>${item.name}</span></div>` : '';
       div.innerHTML = `
-        <img src="${item.url}" alt="お知らせ" style="width:100%;display:block;border-radius:12px;">
+        ${nameLabel}
+        <iframe src="${item.url}" style="width:100%;height:480px;border:none;display:block;" loading="lazy"></iframe>
         <button class="notice-del-btn" onclick="deleteNoticeImage('${id}','${item.path}')"
           style="display:none;position:absolute;top:8px;right:8px;background:rgba(192,96,96,0.9);border:none;color:white;border-radius:8px;padding:6px 10px;font-size:0.8rem;cursor:pointer;">✕ 削除</button>
       `;
@@ -3768,7 +3842,8 @@ function loadNoticeImages() {
 }
 
 window.uploadNoticeImages = async function(input) {
-  const files = Array.from(input.files);
+  if (!window._isAdmin) { alert('管理者権限が必要です'); input.value=''; return; }
+  const files = Array.from(input.files).slice(0, 9); // 最大9ページ
   if (!files.length) return;
   const status = document.getElementById('notice-upload-status');
 
@@ -3788,10 +3863,10 @@ window.uploadNoticeImages = async function(input) {
   files.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
   status.style.color = 'var(--muted2)';
-  status.textContent = '古い画像を削除中...';
+  status.textContent = '古いPDFを削除中...';
 
   try {
-    // 既存画像を全て削除（差し替え式）
+    // 既存PDFを全て削除（差し替え式）
     const snap = await window.mdb.ref(NOTICE_DB_KEY).once('value');
     const existing = snap.val();
     if (existing) {
@@ -3802,21 +3877,19 @@ window.uploadNoticeImages = async function(input) {
       await Promise.all(delPromises);
     }
 
-    // 新しい画像をファイル名順でアップロード
+    // 新しいPDFをファイル名順でアップロード
     for (let i = 0; i < files.length; i++) {
-      status.textContent = `${i+1}/${files.length}枚目をアップロード中...`;
+      status.textContent = `${i+1}/${files.length}ページ目をアップロード中...`;
       const file = files[i];
-      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-      // ファイル名順を保持するためインデックスをゼロ埋め
       const id = String(i).padStart(3, '0') + '_' + Date.now();
-      const path = `${NOTICE_STORAGE_DIR}${id}.${ext}`;
+      const path = `${NOTICE_STORAGE_DIR}${id}.pdf`;
       const ref = _mstorage.ref(path);
-      await ref.put(file, { contentType: file.type });
+      await ref.put(file, { contentType: 'application/pdf' });
       const url = await ref.getDownloadURL();
       await window.mdb.ref(`${NOTICE_DB_KEY}/${id}`).set({ url, path, ts: Date.now(), name: file.name, order: i });
     }
     status.style.color = 'var(--green)';
-    status.textContent = `✅ ${files.length}枚に差し替えました（${files.map(f=>f.name).join('、')}）`;
+    status.textContent = `✅ ${files.length}ページに差し替えました`;
     input.value = '';
     setTimeout(() => { status.textContent = ''; }, 4000);
   } catch(e) {
