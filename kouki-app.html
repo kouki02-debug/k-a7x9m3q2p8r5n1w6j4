@@ -200,6 +200,9 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 .alc-vol-btn.selected{background:rgba(200,169,110,0.15);border-color:var(--accent);color:var(--accent);}
 .alc-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:0.78rem;position:relative;min-height:36px;}
 .alc-day.has-rec{background:rgba(200,169,110,0.12);}
+/* シミュレーター */
+.alc-bac-bar{height:20px;border-radius:6px;background:var(--border2);overflow:hidden;position:relative;}
+.alc-bac-fill{height:100%;border-radius:6px;transition:width 0.6s ease;}
 
 /* MUSUKO/家計 CSS */
 .mtab{flex:1;padding:12px 4px;text-align:center;font-family:'Zen Maru Gothic',sans-serif;font-size:0.78rem;color:#9A8070;cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:all 0.2s;}
@@ -1033,6 +1036,43 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <!-- カレンダー -->
     <div class="card" style="margin-bottom:14px;">
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="alc-cal-grid"></div>
+    </div>
+
+    <!-- アルコール分解シミュレーター -->
+    <div class="card" style="margin-bottom:14px;" id="alc-sim-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);">🔬 アルコール分解シミュレーター</div>
+        <button onclick="alcSimToggleSettings()" id="alc-sim-gear"
+          style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;">⚙️ 体重/性別</button>
+      </div>
+
+      <!-- 体重・性別設定（折りたたみ） -->
+      <div id="alc-sim-settings" style="display:none;background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">体重（kg）</div>
+            <input type="number" id="alc-weight" placeholder="例：65" min="30" max="200"
+              style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;"
+              oninput="alcSimSaveSettings()">
+          </div>
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">性別</div>
+            <select id="alc-gender" onchange="alcSimSaveSettings()"
+              style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;">
+              <option value="male">男性</option>
+              <option value="female">女性</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;">※ Widmark式による概算。個人差があります</div>
+      </div>
+
+      <!-- シミュレーション結果エリア -->
+      <div id="alc-sim-result">
+        <div style="text-align:center;color:var(--muted2);font-size:0.82rem;padding:12px 0;">
+          今日の記録を追加するとシミュレーションが表示されます
+        </div>
+      </div>
     </div>
 
     <!-- 記録追加ボタン -->
@@ -4048,6 +4088,8 @@ function initAlcoholTab() {
   renderAlcCal();
   renderAlcList();
   renderAlcSummary();
+  alcSimLoadSettings();
+  alcSimRender();
   // 日付を今日にデフォルト設定
   const di = document.getElementById('alc-date');
   if (di && !di.value) di.value = toDateStr(new Date());
@@ -4065,6 +4107,7 @@ function loadAlcRecords() {
     renderAlcCal();
     renderAlcList();
     renderAlcSummary();
+    alcSimRender();
   });
 }
 
@@ -4076,6 +4119,7 @@ window.alcChangeMonth = function(dir) {
   renderAlcCal();
   renderAlcList();
   renderAlcSummary();
+  alcSimRender();
 };
 
 // ── カレンダー描画 ──
@@ -4280,6 +4324,250 @@ window.alcDelete = async function(id) {
   if (!confirm('この記録を削除しますか？')) return;
   if (window.mdb) await window.mdb.ref(ALC_DB_KEY + '/' + id).remove();
 };
+
+// ════ アルコール分解シミュレーター ════
+// Widmark式: BAC(%) = 純アルコール(g) / (体重(kg) × r) × 100
+// r: 分配係数 男性=0.7, 女性=0.6
+// 分解速度: 約0.015%/時間（個人差あり）
+const ALC_SIM_KEY = 'kouki_alc_sim_settings';
+
+function alcSimLoadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(ALC_SIM_KEY) || '{}');
+    const w = document.getElementById('alc-weight');
+    const g = document.getElementById('alc-gender');
+    if (w && s.weight) w.value = s.weight;
+    if (g && s.gender) g.value = s.gender;
+  } catch(e) {}
+}
+
+window.alcSimSaveSettings = function() {
+  const w = document.getElementById('alc-weight')?.value;
+  const g = document.getElementById('alc-gender')?.value;
+  localStorage.setItem(ALC_SIM_KEY, JSON.stringify({ weight: w, gender: g }));
+  alcSimRender();
+};
+
+window.alcSimToggleSettings = function() {
+  const el = document.getElementById('alc-sim-settings');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+// 今日の記録から分解曲線を計算・描画
+function alcSimRender() {
+  const el = document.getElementById('alc-sim-result');
+  if (!el) return;
+
+  // 設定値
+  const weight = parseFloat(document.getElementById('alc-weight')?.value) || 65;
+  const gender = document.getElementById('alc-gender')?.value || 'male';
+  const r = gender === 'female' ? 0.6 : 0.7;   // 分配係数
+  const metabolRate = 0.015;                     // 分解速度 %/h
+
+  // 今日の記録を収集（時刻付きのみ有効）
+  const todayStr = toDateStr(new Date());
+  const todayRecs = _alcRecords.filter(rec => rec.date === todayStr && rec.pct && rec.vol && rec.time);
+
+  if (!todayRecs.length) {
+    // 今日の記録がない or 度数・時刻未入力の場合は最新日の記録を使う
+    const latestRec = _alcRecords.find(rec => rec.pct && rec.vol && rec.time);
+    if (!latestRec) {
+      el.innerHTML = '<div style="text-align:center;color:var(--muted2);font-size:0.82rem;padding:12px 0;">時刻・度数付きの記録を追加するとシミュレーションが表示されます</div>';
+      return;
+    }
+    // 最新日を使う場合はその日の記録を収集
+    const latestDate = latestRec.date;
+    const recs = _alcRecords.filter(rec => rec.date === latestDate && rec.pct && rec.vol && rec.time);
+    alcSimCalc(el, recs, latestDate, weight, r, metabolRate);
+  } else {
+    alcSimCalc(el, todayRecs, todayStr, weight, r, metabolRate);
+  }
+}
+
+function alcSimCalc(el, recs, dateStr, weight, r, metabolRate) {
+  // 各記録の純アルコール(g) と 摂取時刻(分) を計算
+  const intakes = recs.map(rec => {
+    const pureG = rec.vol * (rec.pct / 100) * 0.8; // 純アルコール(g): mL × 度数 × 比重0.8
+    const [hh, mm] = (rec.time || '00:00').split(':').map(Number);
+    const minuteOfDay = hh * 60 + mm;
+    return { pureG, minuteOfDay, time: rec.time };
+  }).sort((a, b) => a.minuteOfDay - b.minuteOfDay);
+
+  // 現在時刻（分）
+  const now = new Date();
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const isToday = dateStr === toDateStr(now);
+
+  // 最後の摂取時刻
+  const lastIntake = intakes[intakes.length - 1];
+
+  // BAC曲線を計算（0分〜24時間後まで 30分刻み）
+  // 吸収遅延: 飲酒後30分でピーク到達を仮定
+  const points = [];
+  for (let m = 0; m <= 24 * 60; m += 30) {
+    let bac = 0;
+    intakes.forEach(intake => {
+      const elapsed = (m - intake.minuteOfDay) / 60; // 経過時間(h)
+      if (elapsed < 0) return; // まだ飲んでいない
+      const peakBAC = (intake.pureG / (weight * r * 10)); // ピークBAC(%)
+      const absorbedElapsed = Math.max(0, elapsed - 0.5); // 吸収に30分かかると仮定
+      const bacContrib = Math.max(0, peakBAC - metabolRate * absorbedElapsed);
+      bac += bacContrib;
+    });
+    points.push({ m, bac: Math.max(0, bac) });
+  }
+
+  // 現在のBAC（今日の記録の場合）
+  let currentBac = 0;
+  if (isToday) {
+    intakes.forEach(intake => {
+      const elapsed = (nowMinute - intake.minuteOfDay) / 60;
+      if (elapsed < 0) return;
+      const peakBAC = (intake.pureG / (weight * r * 10));
+      const absorbedElapsed = Math.max(0, elapsed - 0.5);
+      currentBac += Math.max(0, peakBAC - metabolRate * absorbedElapsed);
+    });
+    currentBac = Math.max(0, currentBac);
+  }
+
+  // 運転可能になる時刻（BAC < 0.03%）
+  const DRIVE_LIMIT = 0.03;
+  let driveOkMinute = null;
+  const lastMinute = lastIntake.minuteOfDay;
+
+  // 最後の飲酒後から分解完了時刻を逆算
+  const totalPureG = intakes.reduce((s, i) => s + i.pureG, 0);
+  const peakBacTotal = totalPureG / (weight * r * 10);
+  // ピーク後DRIVE_LIMIT未満になるまでの時間
+  const hoursToLimit = Math.max(0, (peakBacTotal - DRIVE_LIMIT) / metabolRate) + 0.5; // 吸収時間含む
+  driveOkMinute = lastMinute + hoursToLimit * 60;
+
+  // 運転可能時刻の文字列
+  let driveOkStr = '';
+  let driveOkDate = dateStr;
+  if (driveOkMinute !== null) {
+    let dm = driveOkMinute;
+    let addDays = 0;
+    while (dm >= 24 * 60) { dm -= 24 * 60; addDays++; }
+    const dh = Math.floor(dm / 60);
+    const dmin = Math.round(dm % 60);
+    driveOkStr = (addDays > 0 ? '翌' + addDays + '日 ' : '') + String(dh).padStart(2, '0') + ':' + String(dmin).padStart(2, '0');
+    if (addDays > 0) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + addDays);
+      driveOkDate = toDateStr(d);
+    }
+  }
+
+  // 運転可能かどうか
+  const canDriveNow = isToday && currentBac < DRIVE_LIMIT;
+  const alreadyOk   = isToday && driveOkMinute <= nowMinute;
+
+  // 残り時間
+  let remainStr = '';
+  if (isToday && !alreadyOk && driveOkMinute > nowMinute) {
+    const remainMin = Math.ceil(driveOkMinute - nowMinute);
+    const rh = Math.floor(remainMin / 60);
+    const rm = remainMin % 60;
+    remainStr = (rh > 0 ? rh + '時間' : '') + (rm > 0 ? rm + '分' : '');
+  }
+
+  // BAC色
+  function bacColor(bac) {
+    if (bac >= 0.08) return '#c06060';  // 赤：明らかな酔い
+    if (bac >= 0.05) return '#E8B84B';  // 黄：やや酔い
+    if (bac >= 0.03) return '#d4a04a';  // オレンジ：要注意
+    return '#7A9E7E';                    // 緑：基準以下
+  }
+  const currentColor = bacColor(currentBac);
+
+  // 簡易グラフ（SVGで折れ線）
+  const maxBac = Math.max(...points.map(p => p.bac), 0.01);
+  const svgW = 320, svgH = 80, padL = 30, padR = 10, padT = 8, padB = 20;
+  const plotW = svgW - padL - padR;
+  const plotH = svgH - padT - padB;
+
+  const toX = m => padL + (m / (24 * 60)) * plotW;
+  const toY = bac => padT + plotH - (bac / Math.max(maxBac * 1.2, 0.1)) * plotH;
+
+  // 折れ線パス
+  const pathD = points.map((p, i) => (i === 0 ? 'M' : 'L') + toX(p.m).toFixed(1) + ',' + toY(p.bac).toFixed(1)).join(' ');
+  // 塗りつぶし
+  const areaD = pathD + ' L' + toX(24*60) + ',' + toY(0) + ' L' + toX(0) + ',' + toY(0) + ' Z';
+
+  // 現在時刻マーカー
+  const nowX = isToday ? toX(nowMinute) : null;
+  const nowY = isToday ? toY(currentBac) : null;
+
+  // 運転可能ライン (BAC=0.03)
+  const driveLineY = toY(DRIVE_LIMIT);
+  // 運転可能ライン X
+  const driveX = driveOkMinute !== null ? toX(Math.min(driveOkMinute, 24*60)) : null;
+
+  // X軸目盛り（0, 6, 12, 18, 24）
+  const xTicks = [0, 6, 12, 18, 24].map(h => ({ x: toX(h*60), label: h + ':00' }));
+
+  const svgStr = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:' + svgW + 'px;overflow:visible;">'
+    + '<defs><linearGradient id="bacGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + currentColor + '" stop-opacity="0.5"/><stop offset="100%" stop-color="' + currentColor + '" stop-opacity="0.05"/></linearGradient></defs>'
+    // 危険域（0.03以上）
+    + '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + (driveLineY - padT) + '" fill="rgba(192,96,96,0.06)" rx="2"/>'
+    // 面グラフ
+    + '<path d="' + areaD + '" fill="url(#bacGrad)"/>'
+    // 折れ線
+    + '<path d="' + pathD + '" fill="none" stroke="' + currentColor + '" stroke-width="2" stroke-linejoin="round"/>'
+    // 運転可能ライン
+    + '<line x1="' + padL + '" y1="' + driveLineY + '" x2="' + (svgW - padR) + '" y2="' + driveLineY + '" stroke="#7A9E7E" stroke-width="1" stroke-dasharray="4,3"/>'
+    + '<text x="' + (padL + 2) + '" y="' + (driveLineY - 2) + '" font-size="7" fill="#7A9E7E">0.03%</text>'
+    // 現在時刻マーカー
+    + (nowX ? '<line x1="' + nowX + '" y1="' + padT + '" x2="' + nowX + '" y2="' + (svgH - padB) + '" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3,2"/>' : '')
+    + (nowX && nowY ? '<circle cx="' + nowX + '" cy="' + nowY + '" r="4" fill="' + currentColor + '" stroke="#0f0f0f" stroke-width="1.5"/>' : '')
+    // X軸
+    + '<line x1="' + padL + '" y1="' + (svgH - padB) + '" x2="' + (svgW - padR) + '" y2="' + (svgH - padB) + '" stroke="var(--border2)" stroke-width="1"/>'
+    + xTicks.map(t => '<text x="' + t.x + '" y="' + (svgH - padB + 12) + '" font-size="8" fill="var(--muted2)" text-anchor="middle">' + t.label + '</text>').join('')
+    // Y軸
+    + '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (svgH - padB) + '" stroke="var(--border2)" stroke-width="1"/>'
+    + '</svg>';
+
+  // HTML組み立て
+  const dateLabel = dateStr === toDateStr(new Date()) ? '今日' : dateStr.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$2/$3');
+
+  el.innerHTML =
+    // 現在BACメーター
+    (isToday ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">'
+      + '<div style="background:' + currentColor + '18;border:1px solid ' + currentColor + '44;border-radius:10px;padding:10px;text-align:center;">'
+      +   '<div style="font-size:0.65rem;color:var(--muted2);margin-bottom:2px;">現在のBAC</div>'
+      +   '<div style="font-family:\'DM Mono\',monospace;font-size:1.5rem;color:' + currentColor + ';font-weight:700;">' + currentBac.toFixed(3) + '<span style="font-size:0.7rem;">%</span></div>'
+      +   '<div style="font-size:0.62rem;color:' + currentColor + ';margin-top:2px;">' + (currentBac === 0 ? '分解完了' : currentBac < 0.03 ? '基準以下' : currentBac < 0.05 ? '飲酒あり' : '高濃度') + '</div>'
+      + '</div>'
+      + '<div style="background:' + (alreadyOk ? '#7A9E7E18' : '#c0606018') + ';border:1px solid ' + (alreadyOk ? '#7A9E7E44' : '#c0606044') + ';border-radius:10px;padding:10px;text-align:center;">'
+      +   '<div style="font-size:0.65rem;color:var(--muted2);margin-bottom:2px;">🚗 運転可能</div>'
+      +   (alreadyOk
+          ? '<div style="font-size:0.85rem;color:#7A9E7E;font-weight:700;margin-top:4px;">✅ 運転可能</div>'
+          : '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#c06060;font-weight:700;">' + driveOkStr + '</div>'
+            + (remainStr ? '<div style="font-size:0.62rem;color:var(--muted2);margin-top:2px;">あと ' + remainStr + '</div>' : ''))
+      + '</div>'
+      + '</div>' : '')
+
+    // 分解予測グラフ
+    + '<div style="margin-bottom:6px;">'
+    + '<div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">' + dateLabel + 'の分解予測グラフ</div>'
+    + svgStr
+    + '</div>'
+
+    // 純アルコール合計
+    + '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:4px;">'
+    + '<span>純アルコール: <b style="color:var(--text);">' + intakes.reduce((s,i) => s + i.pureG, 0).toFixed(1) + 'g</b></span>'
+    + '<span>体重: ' + weight + 'kg / ' + (r === 0.6 ? '女性' : '男性') + '</span>'
+    + '</div>'
+
+    // 注意書き
+    + '<div style="font-size:0.65rem;color:var(--muted);margin-top:6px;line-height:1.5;background:var(--surface2);border-radius:8px;padding:6px 8px;">'
+    + '⚠️ Widmark式による概算です。個人差・体調・食事の影響があります。<b>飲酒運転は絶対にしないでください。</b>'
+    + '</div>';
+}
+
+// シミュレーターも含めてrenderAlcListなどのあとに再描画
 
 // ════ 家計（musuko統合）════
 // Firebase compat（musuko用・既存のFirebase v11とは別）
