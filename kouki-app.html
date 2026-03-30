@@ -193,6 +193,13 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 .wtab{flex:1;min-width:68px;padding:11px 6px;text-align:center;font-size:0.72rem;color:var(--muted2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;font-family:'Noto Sans JP',sans-serif;transition:all 0.2s;white-space:nowrap;}
 .wtab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .wtab:hover:not(.active){color:var(--text);}
+/* アルコール記録タブ */
+.alc-type-btn{padding:8px 4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.75rem;cursor:pointer;transition:all 0.15s;font-family:'Noto Sans JP',sans-serif;}
+.alc-type-btn.selected{background:rgba(200,169,110,0.15);border-color:var(--accent);color:var(--accent);}
+.alc-vol-btn{padding:6px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.78rem;cursor:pointer;transition:all 0.15s;font-family:'DM Mono',monospace;}
+.alc-vol-btn.selected{background:rgba(200,169,110,0.15);border-color:var(--accent);color:var(--accent);}
+.alc-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:0.78rem;position:relative;min-height:36px;}
+.alc-day.has-rec{background:rgba(200,169,110,0.12);}
 
 /* MUSUKO/家計 CSS */
 .mtab{flex:1;padding:12px 4px;text-align:center;font-family:'Zen Maru Gothic',sans-serif;font-size:0.78rem;color:#9A8070;cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:all 0.2s;}
@@ -302,6 +309,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <button class="tab" onclick="switchTab('love')" id="tab-love">💕 恋愛</button>
     <button class="tab" onclick="switchTab('work')" id="tab-work">💼 仕事</button>
     <button class="tab" onclick="switchTab('drive')" id="tab-drive">🚗 運転</button>
+    <button class="tab" onclick="switchTab('alcohol')" id="tab-alcohol">🍺 記録</button>
     <button class="tab" onclick="switchTab('kakeibo')" id="tab-kakeibo">💰 家計</button>
     <button class="tab" onclick="switchTab('passenger')" id="tab-passenger">🪑 乗客</button>
     <button class="tab" onclick="switchTab('settings')" id="tab-settings">⚙️ 設定</button>
@@ -1002,6 +1010,116 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 </div><!-- /passenger-panel -->
 
 <!-- 設定パネル -->
+<!-- アルコール記録パネル -->
+<div class="panel" id="alcohol-panel" style="padding:0;overflow-y:auto;max-height:calc(100vh - 110px);">
+  <div style="padding:16px;">
+
+    <!-- 月ナビゲーション -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <button onclick="alcChangeMonth(-1)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--accent);padding:4px 10px;border-radius:8px;">‹</button>
+      <span id="alc-month-label" style="font-family:'Shippori Mincho',serif;font-size:1.15rem;color:var(--text);font-weight:700;"></span>
+      <button onclick="alcChangeMonth(1)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--accent);padding:4px 10px;border-radius:8px;">›</button>
+    </div>
+
+    <!-- 月間サマリー -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;" id="alc-summary">
+        <div><div style="font-size:0.68rem;color:var(--muted2);">飲んだ日</div><div id="alc-sum-days" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:var(--accent);">0</div><div style="font-size:0.65rem;color:var(--muted);">日</div></div>
+        <div><div style="font-size:0.68rem;color:var(--muted2);">休肝日</div><div id="alc-sum-rest" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:#7A9E7E;">0</div><div style="font-size:0.65rem;color:var(--muted);">日</div></div>
+        <div><div style="font-size:0.68rem;color:var(--muted2);">合計量</div><div id="alc-sum-total" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:#E8B84B;">0</div><div style="font-size:0.65rem;color:var(--muted);">mL</div></div>
+      </div>
+    </div>
+
+    <!-- カレンダー -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="alc-cal-grid"></div>
+    </div>
+
+    <!-- 記録追加ボタン -->
+    <button onclick="alcToggleForm()" id="alc-add-btn"
+      style="width:100%;padding:13px;background:rgba(200,169,110,0.1);border:1px dashed var(--accent);border-radius:var(--radius);color:var(--accent);font-family:'Shippori Mincho',serif;font-size:0.95rem;cursor:pointer;margin-bottom:14px;transition:all 0.2s;">
+      ＋ 飲酒を記録する
+    </button>
+
+    <!-- 記録フォーム -->
+    <div id="alc-form" style="display:none;">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);margin-bottom:12px;">🍺 記録を追加</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <!-- 日付 -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">日付</div>
+            <input type="date" id="alc-date"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+          </div>
+          <!-- 時刻 -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">時刻（任意）</div>
+            <input type="time" id="alc-time"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+          </div>
+          <!-- 種類 -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">種類</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="alc-type-btns">
+              <button class="alc-type-btn" data-type="ビール" onclick="alcSelectType(this)">🍺 ビール</button>
+              <button class="alc-type-btn" data-type="チューハイ" onclick="alcSelectType(this)">🥤 チューハイ</button>
+              <button class="alc-type-btn" data-type="日本酒" onclick="alcSelectType(this)">🍶 日本酒</button>
+              <button class="alc-type-btn" data-type="ワイン" onclick="alcSelectType(this)">🍷 ワイン</button>
+              <button class="alc-type-btn" data-type="焼酎" onclick="alcSelectType(this)">🥃 焼酎</button>
+              <button class="alc-type-btn" data-type="その他" onclick="alcSelectType(this)">🍸 その他</button>
+            </div>
+            <input type="text" id="alc-type-custom" placeholder="または直接入力"
+              style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+          </div>
+          <!-- 量 -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">量（mL）</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+              <button class="alc-vol-btn" data-vol="135" onclick="alcSetVol(this)">135</button>
+              <button class="alc-vol-btn" data-vol="350" onclick="alcSetVol(this)">350</button>
+              <button class="alc-vol-btn" data-vol="500" onclick="alcSetVol(this)">500</button>
+              <button class="alc-vol-btn" data-vol="180" onclick="alcSetVol(this)">180</button>
+              <button class="alc-vol-btn" data-vol="300" onclick="alcSetVol(this)">300</button>
+            </div>
+            <input type="number" id="alc-vol" placeholder="mL" min="1" max="5000"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+          </div>
+          <!-- アルコール度数 -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">アルコール度数（%・任意）</div>
+            <input type="number" id="alc-pct" placeholder="例：5" min="0" max="100" step="0.1"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+          </div>
+          <!-- メモ -->
+          <div>
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">メモ（任意）</div>
+            <input type="text" id="alc-memo" placeholder="場所、感想など" maxlength="50"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+          </div>
+          <!-- ボタン -->
+          <div style="display:flex;gap:8px;">
+            <button onclick="alcSave()"
+              style="flex:1;padding:11px;background:var(--accent);border:none;border-radius:10px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.95rem;cursor:pointer;font-weight:700;">
+              💾 保存
+            </button>
+            <button onclick="alcToggleForm()"
+              style="padding:11px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);font-size:0.88rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+              キャンセル
+            </button>
+          </div>
+          <div id="alc-save-msg" style="font-size:0.78rem;text-align:center;min-height:16px;color:var(--green);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 記録リスト -->
+    <div class="sec-title" style="margin-bottom:10px;">📋 今月の記録</div>
+    <div id="alc-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+  </div>
+</div>
+
 <div class="panel" id="settings-panel" style="padding:20px 16px;">
 
   <!-- ダウンロード -->
@@ -1738,6 +1856,9 @@ window.switchTab = function(n) {
 
   // 仕事タブ：シフトを初期表示
   if (n === 'work') { switchWorkTab('shift'); }
+
+  // アルコール記録タブ
+  if (n === 'alcohol') { initAlcoholTab(); }
 
   // 恋愛タブ：カレンダー・リスト初期化
   if (n === 'love') {
@@ -3909,6 +4030,256 @@ function renderChatMsgs(isPolling = false) {
   });
   if (wasAtBottom || !isPolling) c.scrollTop = c.scrollHeight;
 }
+
+// ════ アルコール記録 ════
+const ALC_DB_KEY = 'kouki-app/alcohol';
+let _alcRecords = [];       // [{ id, date, time, type, vol, pct, memo, ts }]
+let _alcLoaded  = false;
+let _alcYear, _alcMonth;
+let _alcSelectedType = '';
+let _alcFormOpen = false;
+let _alcEditId = null;      // 編集中のID（null=新規）
+
+const now0 = new Date();
+_alcYear  = now0.getFullYear();
+_alcMonth = now0.getMonth();
+
+function initAlcoholTab() {
+  renderAlcCal();
+  renderAlcList();
+  renderAlcSummary();
+  // 日付を今日にデフォルト設定
+  const di = document.getElementById('alc-date');
+  if (di && !di.value) di.value = toDateStr(new Date());
+  if (!_alcLoaded) loadAlcRecords();
+}
+
+function loadAlcRecords() {
+  if (!window.mdb) { setTimeout(loadAlcRecords, 800); return; }
+  window.mdb.ref(ALC_DB_KEY).on('value', snap => {
+    const data = snap.val();
+    _alcRecords = data
+      ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.ts - a.ts)
+      : [];
+    _alcLoaded = true;
+    renderAlcCal();
+    renderAlcList();
+    renderAlcSummary();
+  });
+}
+
+// ── 月変更 ──
+window.alcChangeMonth = function(dir) {
+  _alcMonth += dir;
+  if (_alcMonth > 11) { _alcMonth = 0; _alcYear++; }
+  if (_alcMonth < 0)  { _alcMonth = 11; _alcYear--; }
+  renderAlcCal();
+  renderAlcList();
+  renderAlcSummary();
+};
+
+// ── カレンダー描画 ──
+function renderAlcCal() {
+  const label = document.getElementById('alc-month-label');
+  if (label) label.textContent = _alcYear + '年' + (_alcMonth + 1) + '月';
+
+  const grid = document.getElementById('alc-cal-grid');
+  if (!grid) return;
+
+  const daysInMonth = new Date(_alcYear, _alcMonth + 1, 0).getDate();
+  const firstDow    = new Date(_alcYear, _alcMonth, 1).getDay();
+  const todayStr    = toDateStr(new Date());
+
+  // 当月レコードをdate→配列にマップ
+  const recByDate = {};
+  _alcRecords.forEach(r => {
+    if (r.date && r.date.startsWith(_alcYear + '-' + String(_alcMonth + 1).padStart(2, '0'))) {
+      if (!recByDate[r.date]) recByDate[r.date] = [];
+      recByDate[r.date].push(r);
+    }
+  });
+
+  const dayNames = ['日','月','火','水','木','金','土'];
+  let html = dayNames.map((d, i) =>
+    '<div style="text-align:center;font-size:0.68rem;color:' + (i===0?'var(--red)':i===6?'#6080a8':'var(--muted2)') + ';padding:3px 0;">' + d + '</div>'
+  ).join('');
+
+  for (let i = 0; i < firstDow; i++) html += '<div></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds  = _alcYear + '-' + String(_alcMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const dow = new Date(_alcYear, _alcMonth, d).getDay();
+    const recs = recByDate[ds] || [];
+    const isToday = ds === todayStr;
+    const hasRec  = recs.length > 0;
+    const totalVol = recs.reduce((s, r) => s + (Number(r.vol) || 0), 0);
+
+    const bg     = isToday ? 'var(--accent)' : hasRec ? 'rgba(200,169,110,0.15)' : 'transparent';
+    const color  = isToday ? '#0f0f0f' : dow === 0 ? 'var(--red)' : dow === 6 ? '#6080a8' : 'var(--text)';
+    const border = isToday ? '2px solid var(--accent)' : hasRec ? '1px solid rgba(200,169,110,0.4)' : '1px solid transparent';
+
+    html += '<div class="alc-day' + (hasRec ? ' has-rec' : '') + '" style="background:' + bg + ';border:' + border + ';border-radius:8px;cursor:' + (hasRec ? 'pointer' : 'default') + ';"'
+      + (hasRec ? ' onclick="alcShowDay(\'' + ds + '\')"' : '') + '>'
+      + '<div style="font-size:0.78rem;color:' + color + ';font-weight:' + (isToday ? '700' : '400') + ';">' + d + '</div>'
+      + (hasRec ? '<div style="font-size:0.55rem;color:' + (isToday ? '#0f0f0f' : 'var(--accent)') + ';margin-top:1px;">' + (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'L' : totalVol+'mL') + '</div>' : '')
+      + '</div>';
+  }
+
+  grid.innerHTML = html;
+}
+
+// ── サマリー ──
+function renderAlcSummary() {
+  const prefix = _alcYear + '-' + String(_alcMonth + 1).padStart(2, '0');
+  const monthRecs = _alcRecords.filter(r => r.date && r.date.startsWith(prefix));
+  const drinkDays = new Set(monthRecs.map(r => r.date)).size;
+  const daysInMonth = new Date(_alcYear, _alcMonth + 1, 0).getDate();
+  const restDays  = daysInMonth - drinkDays;
+  const totalVol  = monthRecs.reduce((s, r) => s + (Number(r.vol) || 0), 0);
+
+  const sd = document.getElementById('alc-sum-days');
+  const sr = document.getElementById('alc-sum-rest');
+  const st = document.getElementById('alc-sum-total');
+  if (sd) sd.textContent = drinkDays;
+  if (sr) sr.textContent = restDays;
+  if (st) st.textContent = totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'L' : totalVol;
+  if (st) st.nextElementSibling.textContent = totalVol >= 1000 ? '' : 'mL';
+}
+
+// ── リスト描画 ──
+function renderAlcList() {
+  const list = document.getElementById('alc-list');
+  if (!list) return;
+  const prefix = _alcYear + '-' + String(_alcMonth + 1).padStart(2, '0');
+  const monthRecs = _alcRecords.filter(r => r.date && r.date.startsWith(prefix));
+
+  if (!monthRecs.length) {
+    list.innerHTML = '<div class="empty"><span class="empty-icon">🍺</span>記録がありません</div>';
+    return;
+  }
+
+  // 日付ごとにグループ化
+  const groups = {};
+  monthRecs.forEach(r => {
+    if (!groups[r.date]) groups[r.date] = [];
+    groups[r.date].push(r);
+  });
+
+  const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  list.innerHTML = '';
+
+  sortedDates.forEach(dateStr => {
+    const d   = new Date(dateStr + 'T00:00:00');
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    const dayLabel = (d.getMonth() + 1) + '月' + d.getDate() + '日（' + dow + '）';
+    const recs = groups[dateStr];
+    const dayTotal = recs.reduce((s, r) => s + (Number(r.vol) || 0), 0);
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;';
+    header.innerHTML = '<span style="font-size:0.8rem;color:var(--muted2);font-family:\'DM Mono\',monospace;">' + dayLabel + '</span>'
+      + '<span style="font-size:0.75rem;color:var(--accent);">計 ' + (dayTotal >= 1000 ? (dayTotal/1000).toFixed(1)+'L' : dayTotal + 'mL') + '</span>';
+    list.appendChild(header);
+
+    recs.sort((a, b) => (a.time || '').localeCompare(b.time || '')).forEach(rec => {
+      const div = document.createElement('div');
+      div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;';
+      const typeIcon = { ビール:'🍺', チューハイ:'🥤', 日本酒:'🍶', ワイン:'🍷', 焼酎:'🥃', その他:'🍸' }[rec.type] || '🍶';
+      const pureAlc = rec.pct && rec.vol ? Math.round(rec.vol * (Number(rec.pct) / 100) * 0.8) : null;
+      div.innerHTML = '<span style="font-size:1.4rem;">' + typeIcon + '</span>'
+        + '<div style="flex:1;min-width:0;">'
+        +   '<div style="font-size:0.88rem;color:var(--text);font-weight:500;">' + esc(rec.type || '') + (rec.time ? ' <span style="font-size:0.72rem;color:var(--muted2);">' + rec.time + '</span>' : '') + '</div>'
+        +   '<div style="font-size:0.78rem;color:var(--accent);margin-top:2px;">'
+        +     (rec.vol ? rec.vol + 'mL' : '') + (rec.pct ? '　' + rec.pct + '%' : '') + (pureAlc ? '　純アルコール約' + pureAlc + 'g' : '')
+        +   '</div>'
+        +   (rec.memo ? '<div style="font-size:0.72rem;color:var(--muted2);margin-top:2px;">' + esc(rec.memo) + '</div>' : '')
+        + '</div>'
+        + '<button onclick="alcDelete(\'' + rec.id + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;padding:4px 6px;border-radius:6px;flex-shrink:0;" title="削除">✕</button>';
+      list.appendChild(div);
+    });
+  });
+}
+
+// ── 日付タップ詳細 ──
+window.alcShowDay = function(dateStr) {
+  const di = document.getElementById('alc-date');
+  if (di) di.value = dateStr;
+  if (!_alcFormOpen) alcToggleForm();
+};
+
+// ── フォーム開閉 ──
+window.alcToggleForm = function() {
+  _alcFormOpen = !_alcFormOpen;
+  const form = document.getElementById('alc-form');
+  const btn  = document.getElementById('alc-add-btn');
+  if (form) form.style.display = _alcFormOpen ? 'block' : 'none';
+  if (btn)  btn.textContent = _alcFormOpen ? '✕ 閉じる' : '＋ 飲酒を記録する';
+  if (_alcFormOpen) {
+    const di = document.getElementById('alc-date');
+    if (di && !di.value) di.value = toDateStr(new Date());
+  }
+};
+
+// ── 種類ボタン ──
+window.alcSelectType = function(btn) {
+  document.querySelectorAll('.alc-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  _alcSelectedType = btn.dataset.type;
+  document.getElementById('alc-type-custom').value = '';
+};
+
+// ── 量ボタン ──
+window.alcSetVol = function(btn) {
+  document.querySelectorAll('.alc-vol-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('alc-vol').value = btn.dataset.vol;
+};
+
+// ── 保存 ──
+window.alcSave = async function() {
+  const date = document.getElementById('alc-date').value;
+  const time = document.getElementById('alc-time').value;
+  const typeCustom = document.getElementById('alc-type-custom').value.trim();
+  const type = typeCustom || _alcSelectedType;
+  const vol  = document.getElementById('alc-vol').value;
+  const pct  = document.getElementById('alc-pct').value;
+  const memo = document.getElementById('alc-memo').value.trim();
+  const msg  = document.getElementById('alc-save-msg');
+
+  if (!date) { msg.style.color='var(--red)'; msg.textContent='日付を選択してください'; return; }
+  if (!type) { msg.style.color='var(--red)'; msg.textContent='種類を選択または入力してください'; return; }
+  if (!vol || Number(vol) <= 0) { msg.style.color='var(--red)'; msg.textContent='量を入力してください'; return; }
+
+  if (!window.mdb) { msg.style.color='var(--red)'; msg.textContent='Firebase未接続'; return; }
+
+  const id = Date.now().toString() + '_' + Math.random().toString(36).slice(2, 6);
+  const record = { date, type, vol: Number(vol), memo, ts: Date.now() };
+  if (time) record.time = time;
+  if (pct)  record.pct = Number(pct);
+
+  try {
+    await window.mdb.ref(ALC_DB_KEY + '/' + id).set(record);
+    msg.style.color='var(--green)'; msg.textContent='✅ 保存しました';
+    // フォームリセット
+    document.getElementById('alc-vol').value = '';
+    document.getElementById('alc-pct').value = '';
+    document.getElementById('alc-memo').value = '';
+    document.getElementById('alc-time').value = '';
+    document.getElementById('alc-type-custom').value = '';
+    document.querySelectorAll('.alc-type-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.alc-vol-btn').forEach(b => b.classList.remove('selected'));
+    _alcSelectedType = '';
+    setTimeout(() => { msg.textContent = ''; alcToggleForm(); }, 1200);
+  } catch(e) {
+    msg.style.color='var(--red)'; msg.textContent='エラー: ' + e.message;
+  }
+};
+
+// ── 削除 ──
+window.alcDelete = async function(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  if (window.mdb) await window.mdb.ref(ALC_DB_KEY + '/' + id).remove();
+};
 
 // ════ 家計（musuko統合）════
 // Firebase compat（musuko用・既存のFirebase v11とは別）
