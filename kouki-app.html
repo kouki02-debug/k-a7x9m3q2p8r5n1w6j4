@@ -7910,6 +7910,8 @@ function initMusukoContent(defaultTab){
   if(now.getDate()<=26){spendMonth=now.getMonth()===0?11:now.getMonth()-1;spendYear=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();}
   else{spendYear=now.getFullYear();spendMonth=now.getMonth();}
   budgetYear=spendYear;budgetMonth=spendMonth;budgetYearDisp=now.getFullYear();
+  // 予算設定の月は「今月（現在のサイクル月）」で初期化
+  budgetSettingsYear=now.getFullYear();budgetSettingsMonth=now.getMonth();
   const legendArea=document.getElementById('spend-legend-area');
   if(legendArea)legendArea.innerHTML=Object.entries(CAT_LABELS).map(([k,v])=>`<span class="spend-legend" style="--lc:${CAT_COLORS[k]}">${v}</span>`).join('');
   const saved=localStorage.getItem(SPEND_INCOME_KEY);
@@ -8015,7 +8017,16 @@ function budgetSettingsKey(y,m){return`${y}-${m}`;}
 function getBudgetForMonth(y,m){const key=budgetSettingsKey(y,m);return(_budgetSettings[key])||{income:0,cats:{}};}
 window.budgetChangeMonth=function(dir){budgetMonth+=dir;if(budgetMonth>11){budgetMonth=0;budgetYear++;}if(budgetMonth<0){budgetMonth=11;budgetYear--;}renderBudgetMonthly();};
 window.budgetChangeYear=function(dir){budgetYearDisp+=dir;renderBudgetYearly();};
-window.budgetSettingsChangeMonth=function(dir){if(budgetSettingsYear===undefined){budgetSettingsYear=budgetYear;budgetSettingsMonth=budgetMonth;}budgetSettingsMonth+=dir;if(budgetSettingsMonth>11){budgetSettingsMonth=0;budgetSettingsYear++;}if(budgetSettingsMonth<0){budgetSettingsMonth=11;budgetSettingsYear--;}renderBudgetSettings();};
+window.budgetSettingsChangeMonth=function(dir){
+  // budgetSettingsYear/Monthは initMusukoContent で必ず初期化済みだが念のため
+  if(budgetSettingsYear===undefined||budgetSettingsMonth===undefined){
+    const now=new Date();budgetSettingsYear=now.getFullYear();budgetSettingsMonth=now.getMonth();
+  }
+  budgetSettingsMonth+=dir;
+  if(budgetSettingsMonth>11){budgetSettingsMonth=0;budgetSettingsYear++;}
+  if(budgetSettingsMonth<0){budgetSettingsMonth=11;budgetSettingsYear--;}
+  renderBudgetSettings();
+};
 window.togglePrevBalEdit=function(){const edit=document.getElementById('bsum-prev-balance-edit');const show=edit.style.display!=='flex';edit.style.display=show?'flex':'none';if(show){const cur=_prevBalances[`${budgetYear}-${budgetMonth}`];document.getElementById('prev-balance-input').value=cur!==undefined?cur:'';}};
 window.savePrevBalance=function(){const raw=document.getElementById('prev-balance-input').value,val=raw===''?null:parseInt(raw),key=`${budgetYear}-${budgetMonth}`;if(val===null)delete _prevBalances[key];else _prevBalances[key]=val;localStorage.setItem(LS_PREV_BALANCE,JSON.stringify(_prevBalances));togglePrevBalEdit();renderBudgetMonthly();showMToast('先月残高を保存しました');};
 window.toggleIncomeEdit=function(){const edit=document.getElementById('bsum-income-edit');const show=edit.style.display!=='flex';edit.style.display=show?'flex':'none';if(show)document.getElementById('budget-income-monthly-input').value=_budgetSettings.income||'';};
@@ -8052,7 +8063,10 @@ function renderBudgetMonthly(){
 }
 
 function renderBudgetSettings(){
-  if(budgetSettingsYear===undefined){budgetSettingsYear=budgetYear;budgetSettingsMonth=budgetMonth;}
+  // 未初期化の場合は今月で初期化（initMusukoContentで設定済みのはずだが安全のため）
+  if(budgetSettingsYear===undefined||budgetSettingsMonth===undefined){
+    const now=new Date();budgetSettingsYear=now.getFullYear();budgetSettingsMonth=now.getMonth();
+  }
   if(!document.getElementById('budget-settings-month-label'))return;
   const start=spendCycleStart(budgetSettingsYear,budgetSettingsMonth),end=spendCycleEnd(budgetSettingsYear,budgetSettingsMonth);
   document.getElementById('budget-settings-month-label').textContent=`${budgetSettingsYear}年${budgetSettingsMonth+1}月 (${start.getMonth()+1}/${start.getDate()}〜${end.getMonth()+1}/${end.getDate()})`;
