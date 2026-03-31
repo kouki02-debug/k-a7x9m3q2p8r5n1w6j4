@@ -102,6 +102,14 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 .today-row:last-child { border-bottom:none; }
 .today-row .k { color:var(--muted2); font-size:0.78rem; }
 .today-row .v { color:var(--text); font-family:'DM Mono',monospace; }
+/* 暦・吉日バッジ */
+.koyomi-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; border:1px solid; margin:3px; }
+.koyomi-lucky7-row { display:flex; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.82rem; gap:8px; }
+.koyomi-lucky7-row:last-child { border-bottom:none; }
+/* 運勢 */
+.fortune-blood-btn { flex:1; padding:8px 4px; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; color:var(--muted2); font-size:0.85rem; cursor:pointer; transition:all 0.15s; font-family:'Noto Sans JP',sans-serif; }
+.fortune-blood-btn.selected { background:rgba(200,169,110,0.15); border-color:var(--accent); color:var(--accent); font-weight:700; }
+.fortune-stars { font-size:1rem; letter-spacing:1px; }
 
 /* TODO */
 .todo-add { display:flex; gap:8px; margin-bottom:16px; }
@@ -323,6 +331,14 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <div class="card" id="weather-card"><div class="weather-loading">📡 取得中...</div></div>
     <div class="sec-title">今日の情報</div>
     <div class="card" id="today-info"></div>
+    <!-- 吉日・暦 -->
+    <div class="sec-title" style="margin-top:8px;">📅 今日の暦・吉日</div>
+    <div class="card" id="today-koyomi" style="margin-bottom:12px;"></div>
+    <div class="sec-title">🗓️ 今後7日間の吉日</div>
+    <div class="card" id="today-lucky7" style="margin-bottom:12px;padding:12px;"></div>
+    <!-- 今日・明日の運勢 -->
+    <div class="sec-title">🔮 今日・明日の運勢</div>
+    <div id="today-fortune-wrap" style="margin-bottom:12px;"></div>
   </div>
 
   <div class="panel" id="todo-panel">
@@ -1162,6 +1178,33 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
 <div class="panel" id="settings-panel" style="padding:20px 16px;">
 
+  <!-- プロフィール設定（運勢計算用） -->
+  <div class="sec-title">👤 プロフィール設定</div>
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:12px;">運勢計算に使用します</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <!-- 血液型 -->
+      <div>
+        <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">血液型</div>
+        <div style="display:flex;gap:8px;">
+          <button class="fortune-blood-btn" data-type="A" onclick="fortuneSelectBlood(this)">A型</button>
+          <button class="fortune-blood-btn" data-type="B" onclick="fortuneSelectBlood(this)">B型</button>
+          <button class="fortune-blood-btn" data-type="O" onclick="fortuneSelectBlood(this)">O型</button>
+          <button class="fortune-blood-btn" data-type="AB" onclick="fortuneSelectBlood(this)">AB型</button>
+        </div>
+      </div>
+      <!-- 生年月日 -->
+      <div>
+        <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">生年月日（星座・干支の自動判定に使用）</div>
+        <input type="date" id="fortune-birthdate"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:0.9rem;outline:none;"
+          onchange="fortuneSaveProfile()">
+      </div>
+      <!-- 確認表示 -->
+      <div id="fortune-profile-confirm" style="font-size:0.78rem;color:var(--accent);min-height:18px;text-align:center;"></div>
+    </div>
+  </div>
+
   <!-- ダウンロード -->
   <div class="sec-title">📥 ファイル</div>
   <div class="card" style="margin-bottom:16px;">
@@ -1900,6 +1943,9 @@ window.switchTab = function(n) {
   // アルコール記録タブ
   if (n === 'alcohol') { initAlcoholTab(); }
 
+  // 設定タブ：プロフィール読み込み
+  if (n === 'settings') { fortuneLoadProfile(); }
+
   // 恋愛タブ：カレンダー・リスト初期化
   if (n === 'love') {
     renderLoveCal();
@@ -1952,6 +1998,514 @@ function renderTodayInfo() {
     <div class="today-row"><span class="k">今年の残り日数</span><span class="v">${366-day} 日</span></div>
     <div class="today-row"><span class="k">${d.getMonth()+1}月の残り</span><span class="v">${new Date(y,d.getMonth()+1,0).getDate()-d.getDate()} 日</span></div>
     <div class="today-row"><span class="k">今週</span><span class="v">${Math.ceil(d.getDate()/7)} 週目</span></div>`;
+  renderKoyomi(d);
+  renderLucky7(d);
+  renderFortune();
+}
+
+// ════ 暦・吉日計算 ════
+
+// ── 旧暦変換（簡易版・1900〜2100年対応） ──
+// 旧暦データ（各月の日数を1900年から格納）
+// [大月=30日, 小月=29日, 閏月] のビット列による簡易実装
+// ここではユリウス日から旧暦を計算するアルゴリズムを使用
+function gregorianToLunar(year, month, day) {
+  // ユリウス日計算
+  const jd = dateToJD(year, month, day);
+  return jdToLunar(jd);
+}
+
+function dateToJD(y, m, d) {
+  if (m <= 2) { y -= 1; m += 12; }
+  const A = Math.floor(y / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5;
+}
+
+// 旧暦月日の変換テーブル（朔日のユリウス日を格納）
+// 1900〜2100年の旧暦朔日データ（簡略版）
+// 実装: 平均朔日計算 + 補正値による近似
+function jdToLunar(jd) {
+  // 朔日（新月）からの経過日数で旧暦を計算
+  // 元朔 JD 2299160.5 (1582-10-15) を基点
+  const EPOCH_LUNAR = 2299160.5;
+  // 朔望月の平均 = 29.530588853日
+  const SYNODIC = 29.530588853;
+  // 基点の旧暦: 万暦十年九月朔 → 実用上は1900年1月31日(旧暦1月1日)のJD=2415021を基点にする
+  const BASE_JD = 2415021; // 1900年1月31日のJD（旧暦1900年1月1日）
+  const LUNAR_BASE_MONTH = 1;
+  const LUNAR_BASE_YEAR  = 1900;
+
+  // 経過朔望月数
+  const elapsed = (jd - BASE_JD) / SYNODIC;
+  const monthsElapsed = Math.floor(elapsed);
+
+  // 現在の旧暦月を概算（閏月考慮なし版）
+  let lunarYear = LUNAR_BASE_YEAR + Math.floor(monthsElapsed / 12);
+  let lunarMonth = LUNAR_BASE_MONTH + (monthsElapsed % 12);
+  if (lunarMonth > 12) { lunarMonth -= 12; lunarYear++; }
+
+  // 当月朔日のJD（近似）
+  const thisNewMoon = BASE_JD + monthsElapsed * SYNODIC;
+  const lunarDay = Math.floor(jd - thisNewMoon) + 1;
+
+  return { year: lunarYear, month: lunarMonth, day: lunarDay };
+}
+
+// ── 六曜計算 ──
+// 六曜は旧暦の月と日の和 mod 6 で決まる
+// 旧暦1月1日・7月1日 = 先勝、2月1日・8月1日 = 友引、...
+const ROKUYOU = ['先勝', '友引', '先負', '仏滅', '大安', '赤口'];
+const ROKUYOU_INFO = {
+  '先勝': { color:'#5B8DD9', bg:'rgba(91,141,217,0.12)', icon:'⬆️', note:'午前中吉、急ぐことに向く' },
+  '友引': { color:'#7A9E7E', bg:'rgba(122,158,126,0.12)', icon:'🤝', note:'引き分け。葬儀は避ける' },
+  '先負': { color:'#9fc6e7', bg:'rgba(159,198,231,0.12)', icon:'⬇️', note:'午後吉、静かに過ごす' },
+  '仏滅': { color:'#c06060', bg:'rgba(192,96,96,0.12)', icon:'⚠️', note:'万事凶、新しいことは避ける' },
+  '大安': { color:'#E8B84B', bg:'rgba(232,184,75,0.15)', icon:'🌟', note:'最も吉。何事も吉' },
+  '赤口': { color:'#c06060', bg:'rgba(192,96,96,0.12)', icon:'🔴', note:'正午のみ吉。凶日' },
+};
+
+function getRokuyou(date) {
+  const lunar = gregorianToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  const idx = (lunar.month + lunar.day) % 6;
+  return ROKUYOU[idx];
+}
+
+// ── 干支計算 ──
+const JIKKAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const JUNISHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const JUNISHI_EN = ['ね','うし','とら','う','たつ','み','うま','ひつじ','さる','とり','いぬ','い'];
+
+function getEto(date) {
+  // 基準日: 2000年1月1日は庚辰(かのえたつ) = 天干6, 地支4 (0-indexed)
+  const BASE_JD = dateToJD(2000, 1, 1);
+  const jd = Math.floor(dateToJD(date.getFullYear(), date.getMonth() + 1, date.getDate()));
+  const diff = Math.round(jd - Math.round(BASE_JD));
+  const kan  = ((diff % 10) + 10 + 6) % 10;  // 庚=6
+  const shi  = ((diff % 12) + 12 + 4) % 12;  // 辰=4
+  return { kan, shi, kanStr: JIKKAN[kan], shiStr: JUNISHI[shi] };
+}
+
+// ── 吉日判定 ──
+// 一粒万倍日: 甲子・甲午・乙丑・乙未・丙寅・丙申・丁卯・丁酉・戊辰・戊戌・己巳・己亥・庚午・庚子・辛未・辛丑・壬申・壬寅・癸酉・癸卯
+// → 天干・地支の特定組み合わせ
+const ICHIRYU_BANBAI = [
+  [0,0],[0,6],[1,1],[1,7],[2,2],[2,8],[3,3],[3,9],[4,4],[4,10],
+  [5,5],[5,11],[6,6],[6,0],[7,7],[7,1],[8,8],[8,2],[9,9],[9,3]
+];
+
+// 天赦日: 甲午・戊子・戊午・庚寅・壬申・甲子（年4〜6回）
+// 正確には季節×干支の組み合わせ
+const TENSYA = [
+  [0,6],[4,0],[4,6],[6,2],[8,8],[0,0] // 甲午,戊子,戊午,庚寅,壬申,甲子（近似）
+];
+
+// 寅の日: 地支=寅(2)
+// 巳の日: 地支=巳(5)
+// 大明日: 十干と十二支の特定組み合わせ（主要6日）
+const TAIMEI = [
+  [0,4],[0,5],[1,2],[3,8],[4,3],[5,10]
+];
+
+function getDayInfo(date) {
+  const eto = getEto(date);
+  const results = [];
+
+  // 一粒万倍日
+  if (ICHIRYU_BANBAI.some(([k, s]) => k === eto.kan && s === eto.shi)) {
+    results.push({ name: '一粒万倍日', icon: '🌾', color: '#E8B84B', bg: 'rgba(232,184,75,0.15)', note: '種蒔きに吉。小さな努力が実を結ぶ日' });
+  }
+
+  // 天赦日
+  if (TENSYA.some(([k, s]) => k === eto.kan && s === eto.shi)) {
+    results.push({ name: '天赦日', icon: '☀️', color: '#ff69b4', bg: 'rgba(255,105,180,0.12)', note: '年に数回しかない最高の吉日' });
+  }
+
+  // 寅の日
+  if (eto.shi === 2) {
+    results.push({ name: '寅の日', icon: '🐯', color: '#E8B84B', bg: 'rgba(232,184,75,0.1)', note: '金運アップ。旅立ち・出立に吉' });
+  }
+
+  // 巳の日
+  if (eto.shi === 5) {
+    results.push({ name: '巳の日', icon: '🐍', color: '#7A9E7E', bg: 'rgba(122,158,126,0.12)', note: '弁財天の縁日。金運・財運に吉' });
+  }
+
+  // 大明日（簡易版）
+  if (TAIMEI.some(([k, s]) => k === eto.kan && s === eto.shi)) {
+    results.push({ name: '大明日', icon: '🌟', color: '#9fc6e7', bg: 'rgba(159,198,231,0.12)', note: '太陽の光が明るい吉日' });
+  }
+
+  // 不成就日: 月(1,2,3,4,5,6,7,8,9,10,11,12)と日(1,8,16,25が大体の基準)の組み合わせ
+  // 簡易実装: 旧暦の日が1,8,16,24の場合
+  const lunar = gregorianToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  if ([1, 8, 16, 24].includes(lunar.day)) {
+    results.push({ name: '不成就日', icon: '🚫', color: '#c06060', bg: 'rgba(192,96,96,0.1)', note: '何事も成就しにくい日。要注意' });
+  }
+
+  return results;
+}
+
+// ── 描画 ──
+function renderKoyomi(date) {
+  const el = document.getElementById('today-koyomi');
+  if (!el) return;
+
+  const eto    = getEto(date);
+  const rokuyou = getRokuyou(date);
+  const rkInfo  = ROKUYOU_INFO[rokuyou] || {};
+  const dayInfo = getDayInfo(date);
+  const lunar   = gregorianToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
+
+  // 六曜バッジ色
+  const isBad  = rokuyou === '仏滅' || rokuyou === '赤口';
+  const isGreat = rokuyou === '大安';
+
+  let html = '';
+
+  // 干支・旧暦・六曜行
+  html += '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;">';
+
+  // 六曜バッジ（大きめ）
+  html += '<span class="koyomi-badge" style="background:' + rkInfo.bg + ';color:' + rkInfo.color + ';border-color:' + rkInfo.color + '44;font-size:0.85rem;padding:5px 14px;">'
+    + rkInfo.icon + ' ' + rokuyou + '</span>';
+
+  // 干支
+  html += '<span class="koyomi-badge" style="background:rgba(200,169,110,0.1);color:var(--accent);border-color:rgba(200,169,110,0.3);">'
+    + '🐉 ' + eto.kanStr + eto.shiStr + '</span>';
+
+  // 旧暦
+  html += '<span class="koyomi-badge" style="background:var(--surface2);color:var(--muted2);border-color:var(--border2);">'
+    + '🌙 旧暦 ' + lunar.month + '月' + lunar.day + '日</span>';
+
+  html += '</div>';
+
+  // 六曜の説明
+  html += '<div style="font-size:0.75rem;color:var(--muted2);margin-bottom:10px;padding:6px 10px;background:' + rkInfo.bg + ';border-radius:8px;border-left:3px solid ' + rkInfo.color + ';">'
+    + rkInfo.note + '</div>';
+
+  // 吉日バッジ
+  if (dayInfo.length > 0) {
+    html += '<div style="font-size:0.72rem;color:var(--muted2);margin-bottom:6px;">✨ 今日の吉日・注意日</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;">';
+    dayInfo.forEach(d => {
+      html += '<span class="koyomi-badge" style="background:' + d.bg + ';color:' + d.color + ';border-color:' + d.color + '44;">'
+        + d.icon + ' ' + d.name + '</span>';
+    });
+    html += '</div>';
+    // 最初の吉日の説明
+    const first = dayInfo.find(d => !d.name.includes('不成就'));
+    if (first) {
+      html += '<div style="font-size:0.72rem;color:var(--muted2);margin-top:6px;padding:5px 10px;background:' + first.bg + ';border-radius:8px;">'
+        + first.icon + ' ' + first.name + '：' + first.note + '</div>';
+    }
+  } else {
+    html += '<div style="font-size:0.72rem;color:var(--muted);text-align:center;padding:6px;">特別な吉日・注意日はありません</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// 今後7日間の吉日一覧
+function renderLucky7(today) {
+  const el = document.getElementById('today-lucky7');
+  if (!el) return;
+
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const eto      = getEto(d);
+    const rokuyou  = getRokuyou(d);
+    const rkInfo   = ROKUYOU_INFO[rokuyou] || {};
+    const dayInfo  = getDayInfo(d);
+    const dow      = ['日','月','火','水','木','金','土'][d.getDay()];
+    const dowColor = d.getDay() === 0 ? 'var(--red)' : d.getDay() === 6 ? '#6080a8' : 'var(--text)';
+    const isToday  = i === 0;
+
+    // 吉日（凶日除く）のみバッジ
+    const luckyOnly = dayInfo.filter(di => !di.name.includes('不成就'));
+    const badOnly   = dayInfo.filter(di => di.name.includes('不成就'));
+
+    html += '<div class="koyomi-lucky7-row">';
+
+    // 日付
+    html += '<div style="min-width:90px;">'
+      + '<span style="font-size:' + (isToday ? '0.95rem' : '0.85rem') + ';font-weight:' + (isToday ? '700' : '400') + ';color:' + dowColor + ';">'
+      + (d.getMonth()+1) + '/' + d.getDate() + '（' + dow + '）</span>'
+      + (isToday ? ' <span style="font-size:0.65rem;background:var(--accent);color:#0f0f0f;border-radius:6px;padding:1px 5px;">今日</span>' : '')
+      + '</div>';
+
+    // 六曜
+    html += '<span style="font-size:0.72rem;color:' + rkInfo.color + ';min-width:36px;font-weight:' + (rokuyou === '大安' || rokuyou === '赤口' || rokuyou === '仏滅' ? '700' : '400') + ';">'
+      + (rkInfo.icon || '') + rokuyou + '</span>';
+
+    // 吉日バッジ
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;flex:1;">';
+    luckyOnly.forEach(di => {
+      html += '<span style="font-size:0.65rem;background:' + di.bg + ';color:' + di.color + ';border:1px solid ' + di.color + '44;border-radius:12px;padding:1px 7px;">'
+        + di.icon + di.name + '</span>';
+    });
+    badOnly.forEach(di => {
+      html += '<span style="font-size:0.65rem;background:' + di.bg + ';color:' + di.color + ';border:1px solid ' + di.color + '33;border-radius:12px;padding:1px 7px;opacity:0.7;">'
+        + di.icon + di.name + '</span>';
+    });
+    if (luckyOnly.length === 0 && badOnly.length === 0) {
+      html += '<span style="font-size:0.65rem;color:var(--muted);">—</span>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ════ 今日・明日の運勢 ════
+const FORTUNE_PROFILE_KEY = 'kouki_fortune_profile';
+
+// 星座判定
+function getZodiac(month, day) {
+  const signs = [
+    { name:'山羊座', icon:'♑', end:[1,19] },
+    { name:'水瓶座', icon:'♒', end:[2,18] },
+    { name:'魚座',   icon:'♓', end:[3,20] },
+    { name:'牡羊座', icon:'♈', end:[4,19] },
+    { name:'牡牛座', icon:'♉', end:[5,20] },
+    { name:'双子座', icon:'♊', end:[6,20] },
+    { name:'蟹座',   icon:'♋', end:[7,22] },
+    { name:'獅子座', icon:'♌', end:[8,22] },
+    { name:'乙女座', icon:'♍', end:[9,22] },
+    { name:'天秤座', icon:'♎', end:[10,23] },
+    { name:'蠍座',   icon:'♏', end:[11,22] },
+    { name:'射手座', icon:'♐', end:[12,21] },
+    { name:'山羊座', icon:'♑', end:[12,31] }
+  ];
+  for (const s of signs) {
+    if (month < s.end[0] || (month === s.end[0] && day <= s.end[1])) return s;
+  }
+  return signs[0];
+}
+
+// 誕生年から十二支（生まれ年）
+function getBirthEto(year) {
+  const idx = ((year - 2000) % 12 + 12) % 12;
+  const shi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  const icons = ['🐭','🐮','🐯','🐇','🐉','🐍','🐴','🐑','🐒','🐓','🐕','🐖'];
+  return { name: shi[idx], icon: icons[idx] };
+}
+
+// 日付シードによる疑似乱数（同じ日・同じプロフィールで同じ運勢）
+function fortuneRand(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return Math.abs(s) / 0xffffffff;
+  };
+}
+
+function makeSeed(date, bloodType, birthYear, zodiacName) {
+  const dateNum = date.getFullYear() * 10000 + (date.getMonth()+1) * 100 + date.getDate();
+  const bloodNum = { A:1, B:2, O:3, AB:4 }[bloodType] || 1;
+  const etoIdx = ((birthYear - 2000) % 12 + 12) % 12;
+  const zodiacIdx = ['山羊座','水瓶座','魚座','牡羊座','牡牛座','双子座','蟹座','獅子座','乙女座','天秤座','蠍座','射手座'].indexOf(zodiacName);
+  return dateNum + bloodNum * 100003 + etoIdx * 7919 + zodiacIdx * 3571;
+}
+
+function calcFortune(date, profile) {
+  const { blood, birthYear, birthMonth, birthDay } = profile;
+  const zodiac = getZodiac(birthMonth, birthDay);
+  const birthEto = getBirthEto(birthYear);
+  const seed = makeSeed(date, blood, birthYear, zodiac.name);
+  const rand = fortuneRand(seed);
+
+  // 5段階 (1〜5)、重みつきで中央寄りに
+  const weightedScore = () => {
+    const r = rand();
+    // 1:5%, 2:20%, 3:40%, 4:25%, 5:10% の分布
+    if (r < 0.05) return 1;
+    if (r < 0.25) return 2;
+    if (r < 0.65) return 3;
+    if (r < 0.90) return 4;
+    return 5;
+  };
+
+  const overall = weightedScore();
+  const love    = weightedScore();
+  const work    = weightedScore();
+  const money   = weightedScore();
+  const health  = weightedScore();
+
+  // ラッキーカラー
+  const colors = ['赤','橙','黄','緑','青','紺','紫','ピンク','白','金','銀','茶'];
+  const colorHex = ['#e05555','#e07b35','#d4b84a','#5a9e5a','#4a7ebe','#334880','#7b5ead','#e07095','#cccccc','#c8a96e','#aaaaaa','#8b6244'];
+  const ci = Math.floor(rand() * colors.length);
+  const luckyColor = { name: colors[ci], hex: colorHex[ci] };
+
+  // ラッキーナンバー
+  const luckyNum = Math.floor(rand() * 9) + 1;
+
+  // 一言メッセージ（全24パターン×スコア帯）
+  const msgs = {
+    5: ['最高の運気！積極的に動いて。', '絶好調の一日。直感を信じて。', 'あなたの魅力が輝く日。', '何事も思い通りに進む好日。', 'チャンスが舞い込む予感。'],
+    4: ['好調な一日。前向きに行動を。', 'いい流れが来ています。', '少しの努力が大きな実を結ぶ。', 'コミュニケーションに恵まれた日。', '穏やかで充実した時間が過ごせそう。'],
+    3: ['平穏な一日。マイペースで。', '無理せず、着実に進もう。', '丁寧な行動が吉を呼ぶ。', '焦らず、じっくり取り組んで。', '小さな幸せを大切にする日。'],
+    2: ['少し慎重に行動しよう。', '急ぎすぎず、一息ついて。', '物事をよく考えてから動こう。', '休息も大切な一日。', '準備を怠らないように。'],
+    1: ['ゆっくり休んで英気を養おう。', '無理は禁物。守りに徹して。', '今日は内省の日。じっくり考えよう。', '焦らず、流れに身を任せて。', '小さな幸せを見つけよう。'],
+  };
+  const msgArr = msgs[overall] || msgs[3];
+  const message = msgArr[Math.floor(rand() * msgArr.length)];
+
+  return { overall, love, work, money, health, luckyColor, luckyNum, message, zodiac, birthEto };
+}
+
+function starsHtml(score, max = 5) {
+  return '<span class="fortune-stars">'
+    + '⭐'.repeat(score) + '☆'.repeat(max - score)
+    + '</span>';
+}
+
+function renderFortune() {
+  const wrap = document.getElementById('today-fortune-wrap');
+  if (!wrap) return;
+
+  // プロフィール読み込み
+  let profile;
+  try { profile = JSON.parse(localStorage.getItem(FORTUNE_PROFILE_KEY) || 'null'); } catch(e) {}
+
+  if (!profile || !profile.blood || !profile.birthYear) {
+    wrap.innerHTML = '<div class="card" style="text-align:center;padding:16px;">'
+      + '<div style="font-size:2rem;margin-bottom:8px;">🔮</div>'
+      + '<div style="font-size:0.88rem;color:var(--muted2);">⚙️ 設定タブで血液型と生年月日を登録すると運勢が表示されます</div>'
+      + '</div>';
+    return;
+  }
+
+  const today    = new Date();
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
+  const ft = calcFortune(today, profile);
+  const fm = calcFortune(tomorrow, profile);
+
+  const zodiac   = ft.zodiac;
+  const birthEto = ft.birthEto;
+  const blood    = profile.blood;
+
+  // スコア色
+  const scoreColor = s => s >= 4 ? '#E8B84B' : s >= 3 ? '#7A9E7E' : s >= 2 ? '#9fc6e7' : '#c06060';
+
+  // カード1枚分のHTML
+  const cardHtml = (label, isToday, f) => {
+    const bgAccent = isToday ? 'rgba(200,169,110,0.06)' : 'var(--surface)';
+    const borderAccent = isToday ? '1px solid rgba(200,169,110,0.25)' : '1px solid var(--border)';
+    return '<div style="background:' + bgAccent + ';border:' + borderAccent + ';border-radius:var(--radius);padding:16px;margin-bottom:10px;">'
+
+      // ヘッダー
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+      + '<div style="font-family:\'Shippori Mincho\',serif;font-size:1rem;color:' + (isToday ? 'var(--accent)' : 'var(--muted2)') + ';font-weight:700;">' + label + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center;">'
+      + '<span style="font-size:0.72rem;background:rgba(200,169,110,0.1);color:var(--accent);border:1px solid rgba(200,169,110,0.3);border-radius:12px;padding:1px 8px;">' + blood + '型</span>'
+      + '<span style="font-size:0.72rem;background:var(--surface2);color:var(--muted2);border:1px solid var(--border2);border-radius:12px;padding:1px 8px;">' + zodiac.icon + zodiac.name + '</span>'
+      + '<span style="font-size:0.72rem;background:var(--surface2);color:var(--muted2);border:1px solid var(--border2);border-radius:12px;padding:1px 8px;">' + birthEto.icon + birthEto.name + '</span>'
+      + '</div>'
+      + '</div>'
+
+      // 総合運（大きく）
+      + '<div style="text-align:center;margin-bottom:14px;padding:12px;background:rgba(200,169,110,0.05);border-radius:10px;">'
+      + '<div style="font-size:0.68rem;color:var(--muted2);margin-bottom:4px;">総合運</div>'
+      + '<div style="font-size:1.5rem;margin-bottom:4px;">' + starsHtml(f.overall) + '</div>'
+      + '<div style="font-size:0.82rem;color:var(--text);line-height:1.5;font-family:\'Shippori Mincho\',serif;">' + f.message + '</div>'
+      + '</div>'
+
+      // 4項目グリッド
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">'
+      + [['💕 恋愛運', f.love], ['💼 仕事運', f.work], ['💰 金運', f.money], ['🌿 健康運', f.health]]
+        .map(([label2, score]) =>
+          '<div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center;">'
+          + '<div style="font-size:0.68rem;color:var(--muted2);margin-bottom:3px;">' + label2 + '</div>'
+          + '<div style="font-size:0.82rem;">' + starsHtml(score) + '</div>'
+          + '</div>'
+        ).join('')
+      + '</div>'
+
+      // ラッキー
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+      + '<span style="font-size:0.68rem;color:var(--muted2);">ラッキー：</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;background:' + f.luckyColor.hex + '22;color:' + f.luckyColor.hex + ';border:1px solid ' + f.luckyColor.hex + '55;border-radius:12px;padding:2px 8px;">'
+      + '🎨 ' + f.luckyColor.name + '</span>'
+      + '<span style="font-size:0.72rem;background:var(--surface2);color:var(--accent);border:1px solid var(--border2);border-radius:12px;padding:2px 8px;font-family:\'DM Mono\',monospace;">'
+      + '🔢 ' + f.luckyNum + '</span>'
+      + '</div>'
+
+      + '</div>';
+  };
+
+  wrap.innerHTML = cardHtml('🔮 今日の運勢', true, ft) + cardHtml('🌙 明日の運勢', false, fm);
+}
+
+// ── プロフィール設定 ──
+window.fortuneSelectBlood = function(btn) {
+  document.querySelectorAll('.fortune-blood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  fortuneSaveProfile();
+};
+
+window.fortuneSaveProfile = function() {
+  const blood = document.querySelector('.fortune-blood-btn.selected')?.dataset.type || '';
+  const bd    = document.getElementById('fortune-birthdate')?.value || '';
+  if (!blood && !bd) return;
+
+  let birthYear = 0, birthMonth = 0, birthDay = 0;
+  if (bd) {
+    const parts = bd.split('-');
+    birthYear  = parseInt(parts[0]);
+    birthMonth = parseInt(parts[1]);
+    birthDay   = parseInt(parts[2]);
+  }
+
+  const profile = { blood, birthYear, birthMonth, birthDay };
+  localStorage.setItem(FORTUNE_PROFILE_KEY, JSON.stringify(profile));
+
+  // 確認表示
+  const confirm = document.getElementById('fortune-profile-confirm');
+  if (confirm && blood && birthYear) {
+    const zodiac   = getZodiac(birthMonth, birthDay);
+    const birthEto = getBirthEto(birthYear);
+    confirm.textContent = '✅ ' + blood + '型 / ' + zodiac.icon + zodiac.name + ' / ' + birthEto.icon + birthEto.name + ' で登録しました';
+  }
+
+  // 運勢を再描画
+  renderFortune();
+};
+
+// 設定読み込み（設定タブを開いたとき）
+function fortuneLoadProfile() {
+  let profile;
+  try { profile = JSON.parse(localStorage.getItem(FORTUNE_PROFILE_KEY) || 'null'); } catch(e) {}
+  if (!profile) return;
+
+  // 血液型ボタン
+  if (profile.blood) {
+    document.querySelectorAll('.fortune-blood-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.type === profile.blood);
+    });
+  }
+
+  // 生年月日
+  const bdInput = document.getElementById('fortune-birthdate');
+  if (bdInput && profile.birthYear && profile.birthMonth && profile.birthDay) {
+    bdInput.value = profile.birthYear + '-'
+      + String(profile.birthMonth).padStart(2,'0') + '-'
+      + String(profile.birthDay).padStart(2,'0');
+  }
+
+  // 確認表示
+  const confirm = document.getElementById('fortune-profile-confirm');
+  if (confirm && profile.blood && profile.birthYear) {
+    const zodiac   = getZodiac(profile.birthMonth, profile.birthDay);
+    const birthEto = getBirthEto(profile.birthYear);
+    confirm.textContent = profile.blood + '型 / ' + zodiac.icon + zodiac.name + ' / ' + birthEto.icon + birthEto.name;
+  }
 }
 
 // ════ TODO ════
