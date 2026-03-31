@@ -968,10 +968,16 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
         <span id="dlog-month-label" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--text);font-weight:700;min-width:80px;text-align:center;"></span>
         <button onclick="driveLogChangeMonth(1)" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--accent);padding:2px 8px;">›</button>
       </div>
-      <button onclick="driveLogPrint()"
-        style="padding:8px 14px;background:var(--accent);border:none;border-radius:10px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.85rem;cursor:pointer;font-weight:700;">
-        📄 PDF印刷
-      </button>
+      <div style="display:flex;gap:6px;">
+        <button onclick="driveLogPrint('portrait')"
+          style="padding:8px 10px;background:var(--accent);border:none;border-radius:10px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.8rem;cursor:pointer;font-weight:700;">
+          📄 A4縦
+        </button>
+        <button onclick="driveLogPrint('landscape')"
+          style="padding:8px 10px;background:var(--surface2);border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-family:'Shippori Mincho',serif;font-size:0.8rem;cursor:pointer;font-weight:700;">
+          📄 A4横
+        </button>
+      </div>
     </div>
 
     <!-- 月間サマリー -->
@@ -994,51 +1000,110 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <div class="card" style="margin-bottom:14px;">
         <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);margin-bottom:12px;">🚗 運転記録を入力</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <!-- 日付 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">日付</div>
             <input type="date" id="dlog-date" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;">
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div>
-              <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">出発時刻</div>
-              <input type="time" id="dlog-start-time" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;" oninput="driveLogCalcTime()">
+
+          <!-- 出発時刻・到着時刻（ボタン操作） -->
+          <div style="background:rgba(200,169,110,0.06);border:1px solid rgba(200,169,110,0.2);border-radius:10px;padding:12px;">
+            <div style="font-size:0.78rem;color:var(--accent);font-weight:700;margin-bottom:10px;">🕐 出発・到着時刻</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              <!-- 出発時刻 -->
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">出発時刻</div>
+                <div style="display:flex;gap:5px;margin-bottom:4px;">
+                  <button onclick="driveLogSetTime('start')" id="dlog-btn-start"
+                    style="flex:1;padding:10px 6px;background:var(--accent);border:none;border-radius:8px;color:#0f0f0f;font-size:0.78rem;cursor:pointer;font-weight:700;transition:all 0.2s;">
+                    🚀 出発
+                  </button>
+                  <button onclick="driveLogClearTime('start')"
+                    style="padding:10px 8px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.78rem;cursor:pointer;">
+                    ✕
+                  </button>
+                </div>
+                <input type="time" id="dlog-start-time"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;font-family:'DM Mono',monospace;"
+                  oninput="driveLogCalcTime()">
+                <div id="dlog-start-label" style="font-size:0.68rem;color:var(--muted);text-align:center;margin-top:2px;min-height:14px;"></div>
+              </div>
+              <!-- 到着時刻 -->
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">到着時刻</div>
+                <div style="display:flex;gap:5px;margin-bottom:4px;">
+                  <button onclick="driveLogSetTime('end')" id="dlog-btn-end"
+                    style="flex:1;padding:10px 6px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.78rem;cursor:pointer;font-weight:700;transition:all 0.2s;">
+                    🏁 到着
+                  </button>
+                  <button onclick="driveLogClearTime('end')"
+                    style="padding:10px 8px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.78rem;cursor:pointer;">
+                    ✕
+                  </button>
+                </div>
+                <input type="time" id="dlog-end-time"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;font-family:'DM Mono',monospace;"
+                  oninput="driveLogCalcTime()">
+                <div id="dlog-end-label" style="font-size:0.68rem;color:var(--muted);text-align:center;margin-top:2px;min-height:14px;"></div>
+              </div>
             </div>
-            <div>
-              <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">到着時刻</div>
-              <input type="time" id="dlog-end-time" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;" oninput="driveLogCalcTime()">
-            </div>
+            <!-- 経過時間リアルタイム表示 -->
+            <div id="dlog-duration-display" style="font-size:0.85rem;color:var(--accent);text-align:center;min-height:20px;font-family:'DM Mono',monospace;font-weight:700;"></div>
           </div>
-          <div id="dlog-duration-display" style="font-size:0.78rem;color:var(--accent);text-align:center;min-height:16px;"></div>
+
+          <!-- 出発地（クイック選択 + 自由入力） -->
           <div>
-            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">出発地（任意）</div>
-            <input type="text" id="dlog-from" placeholder="例：自宅、〇〇駅" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">出発地</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+              <button class="dlog-from-btn" data-val="自宅" onclick="driveLogSelectFrom(this)"
+                style="flex:1;padding:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.82rem;cursor:pointer;transition:all 0.15s;">
+                🏠 自宅
+              </button>
+              <button class="dlog-from-btn" data-val="会社" onclick="driveLogSelectFrom(this)"
+                style="flex:1;padding:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.82rem;cursor:pointer;transition:all 0.15s;">
+                🏭 会社
+              </button>
+              <button class="dlog-from-btn" data-val="その他" onclick="driveLogSelectFrom(this)"
+                style="flex:1;padding:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.82rem;cursor:pointer;transition:all 0.15s;">
+                📍 その他
+              </button>
+            </div>
+            <input type="text" id="dlog-from" placeholder="または直接入力（任意）"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
           </div>
+
+          <!-- 目的地 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">目的地</div>
-            <input type="text" id="dlog-to" placeholder="例：〇〇病院、川越駅" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+            <input type="text" id="dlog-to" placeholder="例：〇〇病院、川越駅"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
           </div>
+
           <!-- 航続距離→走行距離自動算出 -->
           <div style="background:rgba(91,141,217,0.06);border:1px solid rgba(91,141,217,0.2);border-radius:10px;padding:12px;">
             <div style="font-size:0.78rem;color:#5B8DD9;font-weight:700;margin-bottom:8px;">⛽ 航続距離（走行距離を自動算出）</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
               <div>
-                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">出発前の航続距離（km）</div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">出発前（km）</div>
                 <input type="number" id="dlog-range-before" placeholder="例：320" min="0" step="1"
                   style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;"
                   oninput="driveLogCalcDist()">
               </div>
               <div>
-                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">到着後の航続距離（km）</div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">到着後（km）</div>
                 <input type="number" id="dlog-range-after" placeholder="例：295" min="0" step="1"
                   style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;"
                   oninput="driveLogCalcDist()">
               </div>
             </div>
-            <div id="dlog-dist-display" style="text-align:center;font-size:0.82rem;color:#5B8DD9;min-height:18px;margin-bottom:6px;"></div>
-            <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:3px;">走行距離（km）※自動入力されます</div>
+            <div id="dlog-dist-display" style="text-align:center;font-size:0.82rem;color:#5B8DD9;min-height:18px;margin-bottom:6px;font-weight:700;"></div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">走行距離（km）※自動入力</div>
             <input type="number" id="dlog-dist" placeholder="航続距離から自動計算" min="0" step="0.1"
               style="width:100%;background:var(--surface2);border:1px solid rgba(91,141,217,0.3);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.9rem;outline:none;">
           </div>
+
+          <!-- 運転目的 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">運転目的</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
@@ -1049,7 +1114,8 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
               <button class="dlog-purpose-btn" data-val="レジャー" onclick="driveLogSelectPurpose(this)">🎡 レジャー</button>
               <button class="dlog-purpose-btn" data-val="その他" onclick="driveLogSelectPurpose(this)">📝 その他</button>
             </div>
-            <input type="text" id="dlog-purpose-custom" placeholder="または直接入力" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;color:var(--text);font-size:0.85rem;outline:none;">
+            <input type="text" id="dlog-purpose-custom" placeholder="または直接入力"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;color:var(--text);font-size:0.85rem;outline:none;">
           </div>
 
           <!-- アルコール記入欄 -->
@@ -1084,9 +1150,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
                 </select>
               </div>
             </div>
-            <div style="font-size:0.68rem;color:var(--muted);line-height:1.5;">
-              ⚠️ 飲酒運転は法律で禁止されています。飲酒後は絶対に運転しないでください。
-            </div>
+            <div style="font-size:0.68rem;color:var(--muted);line-height:1.5;">⚠️ 飲酒運転は法律で禁止されています。</div>
           </div>
 
           <div>
@@ -3314,6 +3378,80 @@ window.driveLogToggleForm = function() {
   }
 };
 
+// ── 時刻操作（ボタン） ──
+let _dlogStartTs = null;  // 出発ボタンを押した実際のTimestamp
+let _dlogTimerInterval = null;
+
+window.driveLogSetTime = function(type) {
+  const now = new Date();
+  const hh  = String(now.getHours()).padStart(2, '0');
+  const mm  = String(now.getMinutes()).padStart(2, '0');
+  const timeStr = hh + ':' + mm;
+
+  if (type === 'start') {
+    _dlogStartTs = now.getTime();
+    document.getElementById('dlog-start-time').value = timeStr;
+    document.getElementById('dlog-start-label').textContent = '✅ ' + timeStr + ' にセット';
+    // 出発ボタンをアクティブ表示
+    const btn = document.getElementById('dlog-btn-start');
+    btn.style.background = '#7A9E7E';
+    btn.style.color = '#fff';
+    btn.textContent = '🚀 ' + timeStr;
+    // リアルタイムタイマー開始
+    if (_dlogTimerInterval) clearInterval(_dlogTimerInterval);
+    _dlogTimerInterval = setInterval(driveLogUpdateTimer, 1000);
+    driveLogUpdateTimer();
+  } else {
+    document.getElementById('dlog-end-time').value = timeStr;
+    document.getElementById('dlog-end-label').textContent = '✅ ' + timeStr + ' にセット';
+    const btn = document.getElementById('dlog-btn-end');
+    btn.style.background = '#c06060';
+    btn.style.color = '#fff';
+    btn.textContent = '🏁 ' + timeStr;
+    // タイマー停止
+    if (_dlogTimerInterval) { clearInterval(_dlogTimerInterval); _dlogTimerInterval = null; }
+    driveLogCalcTime();
+  }
+  driveLogCalcTime();
+};
+
+window.driveLogClearTime = function(type) {
+  if (type === 'start') {
+    _dlogStartTs = null;
+    document.getElementById('dlog-start-time').value = '';
+    document.getElementById('dlog-start-label').textContent = '';
+    const btn = document.getElementById('dlog-btn-start');
+    btn.style.background = 'var(--accent)';
+    btn.style.color = '#0f0f0f';
+    btn.textContent = '🚀 出発';
+    if (_dlogTimerInterval) { clearInterval(_dlogTimerInterval); _dlogTimerInterval = null; }
+  } else {
+    document.getElementById('dlog-end-time').value = '';
+    document.getElementById('dlog-end-label').textContent = '';
+    const btn = document.getElementById('dlog-btn-end');
+    btn.style.background = 'var(--surface2)';
+    btn.style.color = 'var(--muted2)';
+    btn.textContent = '🏁 到着';
+  }
+  document.getElementById('dlog-duration-display').textContent = '';
+};
+
+function driveLogUpdateTimer() {
+  if (!_dlogStartTs) return;
+  const endEl = document.getElementById('dlog-end-time');
+  if (endEl && endEl.value) {
+    if (_dlogTimerInterval) { clearInterval(_dlogTimerInterval); _dlogTimerInterval = null; }
+    return;
+  }
+  const elapsed = Date.now() - _dlogStartTs;
+  const totalSec = Math.floor(elapsed / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const disp = document.getElementById('dlog-duration-display');
+  if (disp) disp.textContent = '⏱ ' + (h > 0 ? h + 'h ' : '') + m + 'm ' + String(s).padStart(2,'0') + 's 経過中...';
+}
+
 window.driveLogCalcTime = function() {
   const s = document.getElementById('dlog-start-time')?.value;
   const e = document.getElementById('dlog-end-time')?.value;
@@ -3323,7 +3461,9 @@ window.driveLogCalcTime = function() {
   const [eh, em] = e.split(':').map(Number);
   let min = (eh * 60 + em) - (sh * 60 + sm);
   if (min < 0) min += 24 * 60;
-  disp.textContent = min > 0 ? '⏱ 運転時間：' + (min >= 60 ? Math.floor(min/60) + '時間' + (min%60?min%60+'分':'') : min + '分') : '';
+  disp.textContent = min > 0
+    ? '✅ 運転時間：' + (min >= 60 ? Math.floor(min/60) + '時間' + (min%60 ? min%60+'分' : '') : min + '分')
+    : '';
 };
 
 // 航続距離から走行距離を自動算出
@@ -3351,6 +3491,25 @@ window.driveLogSelectPurpose = function(btn) {
   btn.classList.add('selected');
   _dlogPurpose = btn.dataset.val;
   document.getElementById('dlog-purpose-custom').value = '';
+};
+
+// 出発地クイック選択
+window.driveLogSelectFrom = function(btn) {
+  document.querySelectorAll('.dlog-from-btn').forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.borderColor = 'var(--border2)';
+    b.style.color = 'var(--muted2)';
+  });
+  btn.style.background = 'rgba(200,169,110,0.15)';
+  btn.style.borderColor = 'var(--accent)';
+  btn.style.color = 'var(--accent)';
+  const val = btn.dataset.val;
+  if (val !== 'その他') {
+    document.getElementById('dlog-from').value = val;
+  } else {
+    document.getElementById('dlog-from').value = '';
+    document.getElementById('dlog-from').focus();
+  }
 };
 
 // ── 保存 ──
@@ -3413,8 +3572,23 @@ window.driveLogSave = async function() {
     const alcSel = document.getElementById('dlog-alc-status');
     if (alcSel) alcSel.value = '';
     document.querySelectorAll('.dlog-purpose-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.dlog-from-btn').forEach(b => {
+      b.style.background = 'var(--surface2)'; b.style.borderColor = 'var(--border2)'; b.style.color = 'var(--muted2)';
+    });
+    // タイマーリセット
+    if (_dlogTimerInterval) { clearInterval(_dlogTimerInterval); _dlogTimerInterval = null; }
+    _dlogStartTs = null;
+    const startBtn = document.getElementById('dlog-btn-start');
+    const endBtn   = document.getElementById('dlog-btn-end');
+    if (startBtn) { startBtn.style.background='var(--accent)'; startBtn.style.color='#0f0f0f'; startBtn.textContent='🚀 出発'; }
+    if (endBtn)   { endBtn.style.background='var(--surface2)'; endBtn.style.color='var(--muted2)'; endBtn.textContent='🏁 到着'; }
+    const startLabel = document.getElementById('dlog-start-label');
+    const endLabel   = document.getElementById('dlog-end-label');
+    if (startLabel) startLabel.textContent = '';
+    if (endLabel)   endLabel.textContent   = '';
     _dlogPurpose = '';
     document.getElementById('dlog-duration-display').textContent = '';
+    document.getElementById('dlog-dist-display').textContent = '';
     setTimeout(() => { msg.textContent = ''; driveLogToggleForm(); }, 1200);
   } catch(e) { msg.style.color='var(--red)'; msg.textContent='エラー: '+e.message; }
 };
@@ -3426,7 +3600,7 @@ window.driveLogDelete = async function(id) {
 };
 
 // ── PDF印刷 ──
-window.driveLogPrint = function() {
+window.driveLogPrint = function(orientation = 'landscape') {
   const prefix  = _dlogYear + '-' + String(_dlogMonth + 1).padStart(2, '0');
   const recs    = _dlogRecords.filter(r => r.date && r.date.startsWith(prefix))
                               .sort((a, b) => a.date.localeCompare(b.date));
@@ -3478,7 +3652,7 @@ window.driveLogPrint = function() {
   tfoot td { padding:6px 8px; border-top:2px solid #999; }
   .footer { margin-top:12px; font-size:7.5pt; color:#999; text-align:right; }
   @media print {
-    @page { size:A4 landscape; margin:12mm; }
+    @page { size:A4 ${orientation}; margin:12mm; }
   }
 </style>
 </head><body>
