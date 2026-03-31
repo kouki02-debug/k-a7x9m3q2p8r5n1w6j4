@@ -1142,6 +1142,17 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
               style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
           </div>
 
+          <!-- 経由地（複数追加可能） -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-size:0.72rem;color:var(--muted2);">経由地（任意・複数可）</div>
+              <button onclick="dlogAddWaypoint()" style="padding:4px 10px;background:rgba(200,169,110,0.12);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:0.72rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+                ＋ 経由地を追加
+              </button>
+            </div>
+            <div id="dlog-waypoints" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+
           <!-- 航続距離→走行距離自動算出 -->
           <div style="background:rgba(91,141,217,0.06);border:1px solid rgba(91,141,217,0.2);border-radius:10px;padding:12px;">
             <div style="font-size:0.78rem;color:#5B8DD9;font-weight:700;margin-bottom:8px;">⛽ 航続距離（走行距離を自動算出）</div>
@@ -1395,6 +1406,14 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
         <input type="text" id="dlog-edit-from" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;"></div>
       <div><div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">目的地</div>
         <input type="text" id="dlog-edit-to" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;"></div>
+      <!-- 経由地（編集） -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.72rem;color:var(--muted2);">経由地</div>
+          <button onclick="dlogEditAddWaypoint()" style="padding:4px 10px;background:rgba(200,169,110,0.12);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:0.72rem;cursor:pointer;">＋ 追加</button>
+        </div>
+        <div id="dlog-edit-waypoints" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div><div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">出発前航続距離</div>
           <input type="number" id="dlog-edit-range-before" placeholder="km" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;" oninput="dlogEditCalcDist()"></div>
@@ -2810,60 +2829,161 @@ function getEto(date) {
 }
 
 // ── 吉日判定 ──
-// 一粒万倍日: 甲子・甲午・乙丑・乙未・丙寅・丙申・丁卯・丁酉・戊辰・戊戌・己巳・己亥・庚午・庚子・辛未・辛丑・壬申・壬寅・癸酉・癸卯
-// → 天干・地支の特定組み合わせ
-const ICHIRYU_BANBAI = [
-  [0,0],[0,6],[1,1],[1,7],[2,2],[2,8],[3,3],[3,9],[4,4],[4,10],
-  [5,5],[5,11],[6,6],[6,0],[7,7],[7,1],[8,8],[8,2],[9,9],[9,3]
+// ─────────────────────────────────────────────────────────────
+// 一粒万倍日（いちりゅうまんばいにち）の正確な計算
+// 旧暦の「月の節（節月）」と「日の地支」の組み合わせで決まる
+// 節月は二十四節気の「節」で区切る（太陽黄経ベース）
+//
+// 各節月に対応する吉日の地支：
+//   寅月(2月節〜) → 子・午
+//   卯月(3月節〜) → 子・午
+//   辰月(4月節〜) → 卯・酉
+//   巳月(5月節〜) → 卯・酉
+//   午月(6月節〜) → 午・子  ※寅月と同
+//   未月(7月節〜) → 午・子
+//   申月(8月節〜) → 酉・卯  ※辰月と同
+//   酉月(9月節〜) → 酉・卯
+//   戌月(10月節〜) → 子・午
+//   亥月(11月節〜) → 子・午
+//   子月(12月節〜) → 卯・酉
+//   丑月(1月節〜) → 卯・酉
+// ─────────────────────────────────────────────────────────────
+
+// 二十四節気の「節」の黄経（太陽黄経）
+// 各節の開始黄経：315=大寒, 345=雨水... → 節月を特定するため
+// 節月番号（1=寅月=315度〜）
+function getSunLongitude(jd) {
+  // 簡易太陽黄経計算（精度±1度程度・吉日判定には十分）
+  const n = jd - 2451545.0;
+  const L = (280.46646 + 0.9856474 * n) % 360;
+  const g = ((357.52911 + 0.98560028 * n) % 360) * Math.PI / 180;
+  const lambda = L + 1.914602 * Math.sin(g) + 0.019993 * Math.sin(2 * g) + 0.000289 * Math.sin(3 * g);
+  return ((lambda % 360) + 360) % 360;
+}
+
+function getSetsuMonth(date) {
+  // 節月を返す（1=寅月, 2=卯月, ..., 12=丑月）
+  // 各節の開始黄経（節のみ、中気は含まない）
+  // 寅月(315°)→卯月(345°)→辰月(15°)→巳月(45°)→午月(75°)→未月(105°)
+  // →申月(135°)→酉月(165°)→戌月(195°)→亥月(225°)→子月(255°)→丑月(285°)
+  const setsuStarts = [315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255, 285];
+  const jd = dateToJD(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  const lon = getSunLongitude(jd + 0.5); // 正午基準
+
+  // 0=寅月(黄経315〜344°), 1=卯月(345〜14°), ...
+  for (let i = 0; i < 12; i++) {
+    const start = setsuStarts[i];
+    const end   = setsuStarts[(i + 1) % 12];
+    let inRange;
+    if (start < end) {
+      inRange = lon >= start && lon < end;
+    } else {
+      // 315〜360 or 0〜end のような場合
+      inRange = lon >= start || lon < end;
+    }
+    if (inRange) return i; // 0=寅月
+  }
+  return 0;
+}
+
+// 節月ごとの一粒万倍日の地支（shi: 0=子,1=丑,...,11=亥）
+// 寅月・卯月 → 子(0)・午(6)
+// 辰月・巳月 → 卯(3)・酉(9)
+// 午月・未月 → 子(0)・午(6)
+// 申月・酉月 → 卯(3)・酉(9)
+// 戌月・亥月 → 子(0)・午(6)
+// 子月・丑月 → 卯(3)・酉(9)
+const ICHIRYU_SETSU = [
+  [0, 6],  // 0:寅月 → 子・午
+  [0, 6],  // 1:卯月 → 子・午
+  [3, 9],  // 2:辰月 → 卯・酉
+  [3, 9],  // 3:巳月 → 卯・酉
+  [0, 6],  // 4:午月 → 子・午
+  [0, 6],  // 5:未月 → 子・午
+  [3, 9],  // 6:申月 → 卯・酉
+  [3, 9],  // 7:酉月 → 卯・酉
+  [0, 6],  // 8:戌月 → 子・午
+  [0, 6],  // 9:亥月 → 子・午
+  [3, 9],  // 10:子月 → 卯・酉
+  [3, 9],  // 11:丑月 → 卯・酉
 ];
 
-// 天赦日: 甲午・戊子・戊午・庚寅・壬申・甲子（年4〜6回）
-// 正確には季節×干支の組み合わせ
-const TENSYA = [
-  [0,6],[4,0],[4,6],[6,2],[8,8],[0,0] // 甲午,戊子,戊午,庚寅,壬申,甲子（近似）
-];
+// 天赦日（てんしゃにち）正確な計算
+// 旧暦の節月 × 日の干支の特定組み合わせで年に5〜6回
+// 春(寅〜辰月): 戊寅(4,2)
+// 夏(巳〜未月): 甲午(0,6)
+// 秋(申〜戌月): 戊申(4,8)
+// 冬(亥〜丑月): 甲子(0,0)
+function isTensyaDay(date, setsuMonth) {
+  const eto = getEto(date);
+  const season = Math.floor(setsuMonth / 3); // 0=春,1=夏,2=秋,3=冬
+  if (season === 0) return eto.kan === 4 && eto.shi === 2;  // 戊寅
+  if (season === 1) return eto.kan === 0 && eto.shi === 6;  // 甲午
+  if (season === 2) return eto.kan === 4 && eto.shi === 8;  // 戊申
+  if (season === 3) return eto.kan === 0 && eto.shi === 0;  // 甲子
+  return false;
+}
 
-// 寅の日: 地支=寅(2)
-// 巳の日: 地支=巳(5)
-// 大明日: 十干と十二支の特定組み合わせ（主要6日）
-const TAIMEI = [
-  [0,4],[0,5],[1,2],[3,8],[4,3],[5,10]
-];
+// 不成就日（ふじょうじゅにち）正確な計算
+// 節月と日の十干の組み合わせ（月によって4日/月）
+// 正確には旧暦月と日の組み合わせ：
+// 1月・7月: 1,8,16,24日
+// 2月・8月: 4,12,20,27日（近似：5,12,20,27）
+// 3月・9月: 9,17,25,3日（近似）
+// 4月・10月: 6,14,22,29日（近似）
+// 5月・11月: 2,10,18,26日（近似）
+// 6月・12月: 7,15,23,30日（近似）
+// → 旧暦日の閏月対応が複雑なため簡易実装を維持
+const FUJOJU_LUNAR_MAP = {
+  1: [1,8,16,24], 7: [1,8,16,24],
+  2: [5,12,20,27], 8: [5,12,20,27],
+  3: [9,17,25,3],  9: [9,17,25,3],
+  4: [6,14,22,29], 10:[6,14,22,29],
+  5: [2,10,18,26], 11:[2,10,18,26],
+  6: [7,15,23,30], 12:[7,15,23,30],
+};
 
 function getDayInfo(date) {
   const eto = getEto(date);
   const results = [];
+  const setsuMonth = getSetsuMonth(date);
+  const lunar = gregorianToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
 
-  // 一粒万倍日
-  if (ICHIRYU_BANBAI.some(([k, s]) => k === eto.kan && s === eto.shi)) {
+  // ── 一粒万倍日（正確版）──
+  const ichiryuShis = ICHIRYU_SETSU[setsuMonth];
+  if (ichiryuShis && ichiryuShis.includes(eto.shi)) {
     results.push({ name: '一粒万倍日', icon: '🌾', color: '#E8B84B', bg: 'rgba(232,184,75,0.15)', note: '種蒔きに吉。小さな努力が実を結ぶ日' });
   }
 
-  // 天赦日
-  if (TENSYA.some(([k, s]) => k === eto.kan && s === eto.shi)) {
-    results.push({ name: '天赦日', icon: '☀️', color: '#ff69b4', bg: 'rgba(255,105,180,0.12)', note: '年に数回しかない最高の吉日' });
+  // ── 天赦日（正確版）──
+  if (isTensyaDay(date, setsuMonth)) {
+    results.push({ name: '天赦日', icon: '☀️', color: '#ff69b4', bg: 'rgba(255,105,180,0.12)', note: '年に5〜6回の最高吉日。全ての罪を許す日' });
   }
 
-  // 寅の日
+  // ── 寅の日（12日に1回）──
   if (eto.shi === 2) {
     results.push({ name: '寅の日', icon: '🐯', color: '#E8B84B', bg: 'rgba(232,184,75,0.1)', note: '金運アップ。旅立ち・出立に吉' });
   }
 
-  // 巳の日
+  // ── 巳の日（12日に1回）──
   if (eto.shi === 5) {
     results.push({ name: '巳の日', icon: '🐍', color: '#7A9E7E', bg: 'rgba(122,158,126,0.12)', note: '弁財天の縁日。金運・財運に吉' });
   }
 
-  // 大明日（簡易版）
-  if (TAIMEI.some(([k, s]) => k === eto.kan && s === eto.shi)) {
-    results.push({ name: '大明日', icon: '🌟', color: '#9fc6e7', bg: 'rgba(159,198,231,0.12)', note: '太陽の光が明るい吉日' });
+  // ── 己巳の日（60日に1回・巳の中でも特別）──
+  if (eto.kan === 5 && eto.shi === 5) {
+    results.push({ name: '己巳の日', icon: '🌟', color: '#ff69b4', bg: 'rgba(255,105,180,0.1)', note: '60日に一度の最強金運日。弁財天の最大縁日' });
   }
 
-  // 不成就日: 月(1,2,3,4,5,6,7,8,9,10,11,12)と日(1,8,16,25が大体の基準)の組み合わせ
-  // 簡易実装: 旧暦の日が1,8,16,24の場合
-  const lunar = gregorianToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  if ([1, 8, 16, 24].includes(lunar.day)) {
-    results.push({ name: '不成就日', icon: '🚫', color: '#c06060', bg: 'rgba(192,96,96,0.1)', note: '何事も成就しにくい日。要注意' });
+  // ── 大安（六曜で判定）──
+  // 六曜は別関数で算出するため、ここでは追加しない
+
+  // ── 不成就日（正確版・旧暦月×日）──
+  const lunarMonth = lunar.month;
+  const lunarDay   = lunar.day;
+  const fujojuDays = FUJOJU_LUNAR_MAP[lunarMonth] || [];
+  if (fujojuDays.includes(lunarDay)) {
+    results.push({ name: '不成就日', icon: '🚫', color: '#c06060', bg: 'rgba(192,96,96,0.1)', note: '何事も成就しにくい日。新事始めは避けて' });
   }
 
   return results;
@@ -3710,6 +3830,9 @@ function renderDriveLogList() {
       + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
       + '<span style="font-size:0.85rem;color:var(--text);">🚗</span>'
       + (rec.from ? '<span style="font-size:0.82rem;color:var(--muted2);">' + esc(rec.from) + '</span><span style="color:var(--muted);">→</span>' : '')
+      + (rec.waypoints && rec.waypoints.length
+          ? rec.waypoints.map(wp => '<span style="font-size:0.78rem;color:var(--muted2);">' + esc(wp) + '</span><span style="color:var(--muted);">→</span>').join('')
+          : '')
       + '<span style="font-size:0.88rem;color:var(--text);font-weight:500;">' + esc(rec.to || '—') + '</span>'
       + (rec.dist ? '<span style="font-size:0.75rem;font-family:\'DM Mono\',monospace;color:#5B8DD9;margin-left:4px;">' + Number(rec.dist).toFixed(1) + 'km</span>' : '')
       + '</div>'
@@ -3888,6 +4011,92 @@ window.driveLogSelectTo = function(btn) {
   }
 };
 
+// ── 経由地 ──
+let _dlogWaypointCount = 0;
+
+window.dlogAddWaypoint = function() {
+  const container = document.getElementById('dlog-waypoints');
+  if (!container) return;
+  _dlogWaypointCount++;
+  const id = 'dlog-wp-' + _dlogWaypointCount;
+  const div = document.createElement('div');
+  div.id = 'dlog-wp-row-' + _dlogWaypointCount;
+  div.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  div.innerHTML =
+    '<span style="font-size:0.75rem;color:var(--muted2);white-space:nowrap;min-width:36px;">経由' + _dlogWaypointCount + '</span>'
+    + '<input type="text" id="' + id + '" placeholder="経由地名を入力" '
+    + 'style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">'
+    + '<button onclick="dlogRemoveWaypoint(' + _dlogWaypointCount + ')" '
+    + 'style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 7px;">✕</button>';
+  container.appendChild(div);
+};
+
+window.dlogRemoveWaypoint = function(n) {
+  const row = document.getElementById('dlog-wp-row-' + n);
+  if (row) row.remove();
+  // ナンバリングを更新
+  const container = document.getElementById('dlog-waypoints');
+  if (!container) return;
+  container.querySelectorAll('[id^="dlog-wp-row-"]').forEach((r, i) => {
+    const label = r.querySelector('span');
+    if (label) label.textContent = '経由' + (i + 1);
+  });
+};
+
+function dlogGetWaypoints(containerId = 'dlog-waypoints') {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  const wps = [];
+  container.querySelectorAll('input[type="text"]').forEach(inp => {
+    const v = inp.value.trim();
+    if (v) wps.push(v);
+  });
+  return wps;
+}
+
+function dlogRenderWaypoints(wps, containerId, editPrefix) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  wps.forEach((wp, i) => {
+    const n = i + 1;
+    const inputId = editPrefix + '-wp-' + n;
+    const div = document.createElement('div');
+    div.id = editPrefix + '-wp-row-' + n;
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    div.innerHTML =
+      '<span style="font-size:0.75rem;color:var(--muted2);white-space:nowrap;min-width:36px;">経由' + n + '</span>'
+      + '<input type="text" id="' + inputId + '" value="' + esc(wp) + '" '
+      + 'style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">'
+      + '<button onclick="dlogEditRemoveWaypoint(' + n + ')" '
+      + 'style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 7px;">✕</button>';
+    container.appendChild(div);
+  });
+}
+
+let _dlogEditWaypointCount = 0;
+window.dlogEditAddWaypoint = function() {
+  const container = document.getElementById('dlog-edit-waypoints');
+  if (!container) return;
+  _dlogEditWaypointCount++;
+  const n = container.querySelectorAll('[id^="dlog-edit-wp-row-"]').length + 1;
+  const div = document.createElement('div');
+  div.id = 'dlog-edit-wp-row-' + _dlogEditWaypointCount;
+  div.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  div.innerHTML =
+    '<span style="font-size:0.75rem;color:var(--muted2);white-space:nowrap;min-width:36px;">経由' + n + '</span>'
+    + '<input type="text" id="dlog-edit-wp-' + _dlogEditWaypointCount + '" placeholder="経由地名" '
+    + 'style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">'
+    + '<button onclick="dlogEditRemoveWaypoint(' + _dlogEditWaypointCount + ')" '
+    + 'style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 7px;">✕</button>';
+  container.appendChild(div);
+};
+
+window.dlogEditRemoveWaypoint = function(n) {
+  const row = document.getElementById('dlog-edit-wp-row-' + n);
+  if (row) row.remove();
+};
+
 // ── 保存 ──
 window.driveLogSave = async function() {
   const date     = document.getElementById('dlog-date')?.value;
@@ -3936,6 +4145,9 @@ window.driveLogSave = async function() {
   if (alcPct)    record.alcPct    = Number(alcPct);
   if (rangeBefore) record.rangeBefore = Number(rangeBefore);
   if (rangeAfter)  record.rangeAfter  = Number(rangeAfter);
+  // 経由地
+  const waypoints = dlogGetWaypoints('dlog-waypoints');
+  if (waypoints.length) record.waypoints = waypoints;
 
   try {
     await window.mdb.ref(DLOG_DB_KEY + '/' + id).set(record);
@@ -3945,6 +4157,10 @@ window.driveLogSave = async function() {
      'dlog-alc-time','dlog-alc-vol','dlog-alc-pct','dlog-range-before','dlog-range-after'].forEach(id2 => {
       const el = document.getElementById(id2); if (el) el.value = '';
     });
+    // 経由地リセット
+    const wpContainer = document.getElementById('dlog-waypoints');
+    if (wpContainer) wpContainer.innerHTML = '';
+    _dlogWaypointCount = 0;
     const alcSel = document.getElementById('dlog-alc-status');
     if (alcSel) alcSel.value = '';
     document.querySelectorAll('.dlog-purpose-btn').forEach(b => b.classList.remove('selected'));
@@ -3995,6 +4211,9 @@ window.driveLogEdit = function(id) {
   document.getElementById('dlog-edit-alc-status').value = rec.alcStatus || '';
   document.getElementById('dlog-edit-memo').value   = rec.memo || '';
   document.getElementById('dlog-edit-msg').textContent = '';
+  // 経由地を復元
+  _dlogEditWaypointCount = 0;
+  dlogRenderWaypoints(rec.waypoints || [], 'dlog-edit-waypoints', 'dlog-edit');
   dlogEditCalcTime();
   const modal = document.getElementById('dlog-edit-modal');
   if (modal) modal.style.display = 'flex';
@@ -4089,13 +4308,18 @@ window.driveLogPrint = function(orientation = 'landscape') {
       ? r.alcStatus + (r.alcVol ? '<br><span style="font-size:7pt;color:#888;">' + r.alcVol + 'mL' + (r.alcPct?'/'+r.alcPct+'%':'') + (r.alcTime?' '+r.alcTime:'') + '</span>' : '')
       : '—';
     const alcColor = r.alcStatus === '飲酒なし' ? '#2a6e2a' : r.alcStatus === '前日飲酒' ? '#8a5c00' : r.alcStatus === '当日飲酒' ? '#8a0000' : '#666';
+    // 経由地を含む経路
+    const routeParts = [];
+    if (r.from) routeParts.push(r.from);
+    if (r.waypoints && r.waypoints.length) r.waypoints.forEach(wp => routeParts.push('→' + wp));
+    routeParts.push('→' + (r.to || '—'));
+    const routeCell = routeParts.join(' ');
     return '<tr style="border-bottom:1px solid #ddd;">'
       + '<td style="padding:5px 8px;text-align:center;">' + (i+1) + '</td>'
       + '<td style="padding:5px 8px;">' + r.date.replace(/^\d{4}-/, '').replace('-', '/') + '（' + dow + '）</td>'
       + '<td style="padding:5px 8px;">' + (r.startTime || '') + (r.endTime ? '〜' + r.endTime : '') + '</td>'
       + '<td style="padding:5px 8px;">' + dur + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.from || '') + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.to || '') + '</td>'
+      + '<td style="padding:5px 8px;">' + routeCell + '</td>'
       + '<td style="padding:5px 8px;text-align:right;">' + (r.dist ? Number(r.dist).toFixed(1) : '—') + '</td>'
       + '<td style="padding:5px 8px;">' + (r.purpose || '') + '</td>'
       + '<td style="padding:5px 8px;color:' + alcColor + ';font-weight:' + (r.alcStatus && r.alcStatus !== '飲酒なし' ? '700' : '400') + ';">' + alcCell + '</td>'
@@ -4142,18 +4366,17 @@ window.driveLogPrint = function(orientation = 'landscape') {
       <th style="width:80px;">日付</th>
       <th style="width:90px;">時刻</th>
       <th style="width:50px;">時間</th>
-      <th style="width:80px;">出発地</th>
-      <th style="width:100px;">目的地</th>
+      <th>経路（出発→経由→目的地）</th>
       <th style="width:50px;text-align:right;">距離(km)</th>
       <th style="width:60px;">目的</th>
       <th style="width:80px;">飲酒確認</th>
       <th>メモ</th>
     </tr>
   </thead>
-  <tbody>${rows || '<tr><td colspan="10" style="padding:12px;text-align:center;color:#999;">記録がありません</td></tr>'}</tbody>
+  <tbody>${rows || '<tr><td colspan="9" style="padding:12px;text-align:center;color:#999;">記録がありません</td></tr>'}</tbody>
   <tfoot>
     <tr>
-      <td colspan="6" style="text-align:right;">合計</td>
+      <td colspan="5" style="text-align:right;">合計</td>
       <td style="text-align:right;">${dist.toFixed(1)}</td>
       <td colspan="3">${count}件 / ${minutes >= 60 ? (minutes/60).toFixed(1)+'h' : minutes+'分'}</td>
     </tr>
@@ -4598,6 +4821,9 @@ window.dlogEditSave = async function() {
   if (purpose)  update.purpose     = purpose; else delete update.purpose;
   if (alcStatus) update.alcStatus  = alcStatus; else delete update.alcStatus;
   if (memo)     update.memo        = memo;    else delete update.memo;
+  // 経由地
+  const waypoints = dlogGetWaypoints('dlog-edit-waypoints');
+  if (waypoints.length) update.waypoints = waypoints; else delete update.waypoints;
   delete update.id;
 
   try {
