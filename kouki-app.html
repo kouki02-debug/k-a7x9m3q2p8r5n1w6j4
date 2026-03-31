@@ -427,60 +427,247 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 </div>
 
 <!-- 恋愛パネル -->
-<div class="panel" id="love-panel" style="padding:20px 16px;">
-  <div class="sec-title">💕 恋愛</div>
+<div class="panel" id="love-panel" style="padding:0;">
 
-  <!-- PDF表示エリア -->
-  <div id="love-pdf-area" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;"></div>
-
-  <!-- 管理者モード -->
-  <div id="love-admin" style="display:none;margin-bottom:12px;">
-    <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:8px;">PDFを最大3枚までアップロードできます（差し替え式）</div>
-    <button onclick="document.getElementById('love-pdf-input').click()"
-      class="add-ev-btn" style="border-color:var(--accent);color:var(--accent);">
-      📄 PDFをアップロード（最大3枚）
-    </button>
-    <input type="file" id="love-pdf-input" accept="application/pdf" multiple style="display:none" onchange="uploadLovePdfs(this)">
-    <div id="love-upload-status" style="font-size:0.78rem;text-align:center;margin-top:6px;min-height:18px;"></div>
+  <!-- サブタブ -->
+  <div style="display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;">
+    <button class="wtab active" id="ltab-calendar" onclick="switchLoveTab('calendar')">💗 カレンダー</button>
+    <button class="wtab" id="ltab-progress" onclick="switchLoveTab('progress')">📊 発展記録</button>
+    <button class="wtab" id="ltab-diary" onclick="switchLoveTab('diary')">📓 記録表</button>
   </div>
-  <button onclick="toggleLoveAdmin()" id="love-admin-btn"
-    style="background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;">
-    ⚙️ 管理者モード
-  </button>
 
-  <!-- 恋愛カレンダー連携 -->
-  <div style="margin-top:20px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="sec-title" style="margin-bottom:0;">💗 恋愛2510 カレンダー</div>
-      <button onclick="syncLoveCalendar()" id="love-sync-btn"
-        style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:rgba(255,0,212,0.08);border:1px solid rgba(255,0,212,0.3);border-radius:20px;color:#ff69b4;font-size:0.78rem;cursor:pointer;transition:all 0.2s;font-family:'Noto Sans JP',sans-serif;">
-        🔄 同期更新
+  <!-- ═══ 合い言葉モーダル ═══ -->
+  <div id="love-pass-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+    <div style="background:var(--surface);border-radius:20px;padding:28px 24px;width:88%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center;">
+      <div style="font-size:1.6rem;margin-bottom:8px;">💌</div>
+      <div style="font-family:'Shippori Mincho',serif;font-size:1rem;color:#ff69b4;margin-bottom:6px;">合い言葉を入力</div>
+      <div style="font-size:0.75rem;color:var(--muted2);margin-bottom:18px;">このセクションはプライベートです</div>
+      <input type="password" id="love-pass-input" placeholder="合い言葉"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--text);font-size:1rem;outline:none;text-align:center;letter-spacing:0.2em;margin-bottom:10px;"
+        onkeydown="if(event.key==='Enter')lovePassSubmit()">
+      <div id="love-pass-error" style="font-size:0.75rem;color:var(--red);min-height:16px;margin-bottom:8px;"></div>
+      <button onclick="lovePassSubmit()" style="width:100%;padding:12px;background:#ff69b4;border:none;border-radius:10px;color:white;font-family:'Shippori Mincho',serif;font-size:0.95rem;cursor:pointer;font-weight:700;">解除</button>
+    </div>
+  </div>
+
+  <!-- ═══ カレンダータブ ═══ -->
+  <div id="lsec-calendar" style="padding:16px;display:block;">
+    <div class="sec-title">💕 恋愛</div>
+
+    <!-- PDF表示エリア -->
+    <div id="love-pdf-area" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;"></div>
+
+    <!-- 管理者モード -->
+    <div id="love-admin" style="display:none;margin-bottom:12px;">
+      <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:8px;">PDFを最大3枚までアップロードできます（差し替え式）</div>
+      <button onclick="document.getElementById('love-pdf-input').click()"
+        class="add-ev-btn" style="border-color:var(--accent);color:var(--accent);">
+        📄 PDFをアップロード（最大3枚）
+      </button>
+      <input type="file" id="love-pdf-input" accept="application/pdf" multiple style="display:none" onchange="uploadLovePdfs(this)">
+      <div id="love-upload-status" style="font-size:0.78rem;text-align:center;margin-top:6px;min-height:18px;"></div>
+    </div>
+    <button onclick="toggleLoveAdmin()" id="love-admin-btn"
+      style="background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;">
+      ⚙️ 管理者モード
+    </button>
+
+    <!-- 恋愛カレンダー連携 -->
+    <div style="margin-top:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="sec-title" style="margin-bottom:0;">💗 恋愛2510 カレンダー</div>
+        <button onclick="syncLoveCalendar()" id="love-sync-btn"
+          style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:rgba(255,0,212,0.08);border:1px solid rgba(255,0,212,0.3);border-radius:20px;color:#ff69b4;font-size:0.78rem;cursor:pointer;transition:all 0.2s;font-family:'Noto Sans JP',sans-serif;">
+          🔄 同期更新
+        </button>
+      </div>
+      <div id="love-sync-status" style="font-size:0.72rem;color:var(--muted2);text-align:center;margin-bottom:12px;min-height:16px;"></div>
+
+      <!-- タイムラインカレンダー -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <button onclick="lovePrevMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">‹</button>
+          <span id="love-cal-label" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--accent);"></span>
+          <button onclick="loveNextMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+          <div style="text-align:center;font-size:0.68rem;color:#c06060;padding:3px 0;">日</div>
+          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">月</div>
+          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">火</div>
+          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">水</div>
+          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">木</div>
+          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">金</div>
+          <div style="text-align:center;font-size:0.68rem;color:#6080a8;padding:3px 0;">土</div>
+        </div>
+        <div id="love-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+      </div>
+
+      <!-- タイムラインリスト -->
+      <div class="sec-title" style="font-size:0.88rem;">📋 出来事リスト</div>
+      <div id="love-event-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ 発展記録タブ ═══ -->
+  <div id="lsec-progress" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+    <!-- タイトル＋相手の名前 -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:#ff69b4;margin-bottom:10px;">💌 恋愛発展記録</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="font-size:0.72rem;color:var(--muted2);white-space:nowrap;">お相手</div>
+        <input type="text" id="love-target-name" placeholder="名前またはニックネーム（任意）" maxlength="20"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:0.88rem;outline:none;"
+          oninput="loveProgressSaveMeta()">
+      </div>
+    </div>
+
+    <!-- 成功確率ゲージ -->
+    <div class="card" style="margin-bottom:14px;" id="love-gauge-card">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:12px;">💖 実現確率シミュレーション</div>
+      <div id="love-gauge-wrap" style="text-align:center;padding:8px 0;">
+        <div style="font-size:0.8rem;color:var(--muted2);">ステージを入力すると確率が表示されます</div>
+      </div>
+    </div>
+
+    <!-- ステージ進捗バー -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:var(--accent);margin-bottom:10px;">🗺️ 進捗ロードマップ</div>
+      <div id="love-roadmap" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 0;"></div>
+    </div>
+
+    <!-- ステージ記録カード -->
+    <div class="sec-title" style="margin-bottom:10px;">📝 ステージ別記録</div>
+    <div id="love-stages-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+
+    <!-- 評価グラフ -->
+    <div class="card" style="margin-bottom:14px;" id="love-chart-card">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:10px;">📊 項目別スコアグラフ</div>
+      <div id="love-chart-wrap"></div>
+    </div>
+
+    <!-- アドバイス -->
+    <div class="card" id="love-advice-card" style="display:none;margin-bottom:16px;background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.2);">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:8px;">💡 次のアクション提案</div>
+      <div id="love-advice-text" style="font-size:0.85rem;color:var(--text);line-height:1.7;"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══ 記録表タブ ═══ -->
+  <div id="lsec-diary" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+    <!-- ヘッダー -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:#ff69b4;">📓 日々の記録表</div>
+      <button onclick="loveDiaryToggleForm()" id="love-diary-add-btn"
+        style="padding:7px 14px;background:rgba(255,105,180,0.1);border:1px solid rgba(255,105,180,0.3);border-radius:20px;color:#ff69b4;font-size:0.78rem;cursor:pointer;">
+        ＋ 記録を追加
       </button>
     </div>
-    <div id="love-sync-status" style="font-size:0.72rem;color:var(--muted2);text-align:center;margin-bottom:12px;min-height:16px;"></div>
 
-    <!-- タイムラインカレンダー -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <button onclick="lovePrevMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">‹</button>
-        <span id="love-cal-label" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--accent);"></span>
-        <button onclick="loveNextMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">›</button>
+    <!-- 記録フォーム -->
+    <div id="love-diary-form" style="display:none;margin-bottom:14px;">
+      <div class="card" style="border:1px solid rgba(255,105,180,0.25);">
+        <div style="font-size:0.75rem;color:#ff69b4;font-family:'Shippori Mincho',serif;margin-bottom:12px;">✏️ 新しい記録</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <!-- 日付 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">📅 日付</div>
+              <input type="date" id="diary-date"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+            </div>
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">👤 接触</div>
+              <select id="diary-contact"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+                <option value="">─</option>
+                <option value="あり（自分から）">✋ あり（自分から）</option>
+                <option value="あり（相手から）">💗 あり（相手から）</option>
+                <option value="あり（双方）">🤝 あり（双方）</option>
+                <option value="なし">✗ なし</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 会話内容 -->
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">💬 会話・出来事の内容</div>
+            <textarea id="diary-content" rows="3" placeholder="今日の出来事・会話のトピック・気になったことなど..."
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;resize:none;line-height:1.6;"></textarea>
+          </div>
+
+          <!-- 相手の反応 -->
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">😊 相手の反応・態度</div>
+            <textarea id="diary-reaction" rows="2" placeholder="表情・声のトーン・特別な行動・距離感など..."
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;resize:none;line-height:1.6;"></textarea>
+          </div>
+
+          <!-- 自分の状態 -->
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">🙋 自分の状態・気持ち</div>
+            <textarea id="diary-self" rows="2" placeholder="自分のコンディション・気持ちの変化・反省点など..."
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;resize:none;line-height:1.6;"></textarea>
+          </div>
+
+          <!-- 総合評価 -->
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:6px;">⭐ 今日の総合評価</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div id="diary-stars" style="display:flex;gap:4px;">
+                <button onclick="loveDiarySetStar(1)" class="diary-star" data-n="1" style="font-size:1.3rem;background:none;border:none;cursor:pointer;padding:0;">☆</button>
+                <button onclick="loveDiarySetStar(2)" class="diary-star" data-n="2" style="font-size:1.3rem;background:none;border:none;cursor:pointer;padding:0;">☆</button>
+                <button onclick="loveDiarySetStar(3)" class="diary-star" data-n="3" style="font-size:1.3rem;background:none;border:none;cursor:pointer;padding:0;">☆</button>
+                <button onclick="loveDiarySetStar(4)" class="diary-star" data-n="4" style="font-size:1.3rem;background:none;border:none;cursor:pointer;padding:0;">☆</button>
+                <button onclick="loveDiarySetStar(5)" class="diary-star" data-n="5" style="font-size:1.3rem;background:none;border:none;cursor:pointer;padding:0;">☆</button>
+              </div>
+              <span id="diary-star-label" style="font-size:0.75rem;color:var(--muted2);"></span>
+            </div>
+          </div>
+
+          <!-- 自由メモ -->
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">📝 自由メモ</div>
+            <textarea id="diary-memo" rows="2" placeholder="次回への課題・気になること・言えなかったことなど"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;resize:none;line-height:1.6;"></textarea>
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <button onclick="loveDiarySave()" style="flex:1;padding:11px;background:#ff69b4;border:none;border-radius:10px;color:white;font-family:'Shippori Mincho',serif;font-size:0.9rem;cursor:pointer;font-weight:700;">💾 保存</button>
+            <button onclick="loveDiaryToggleForm()" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);font-size:0.85rem;cursor:pointer;">キャンセル</button>
+          </div>
+          <div id="diary-save-msg" style="font-size:0.78rem;text-align:center;min-height:14px;color:var(--green);"></div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
-        <div style="text-align:center;font-size:0.68rem;color:#c06060;padding:3px 0;">日</div>
-        <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">月</div>
-        <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">火</div>
-        <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">水</div>
-        <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">木</div>
-        <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">金</div>
-        <div style="text-align:center;font-size:0.68rem;color:#6080a8;padding:3px 0;">土</div>
-      </div>
-      <div id="love-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
     </div>
 
-    <!-- タイムラインリスト -->
-    <div class="sec-title" style="font-size:0.88rem;">📋 出来事リスト</div>
-    <div id="love-event-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <!-- 月選択 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <button onclick="loveDiaryChangeMonth(-1)" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">‹</button>
+      <span id="diary-month-label" style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--text);"></span>
+      <button onclick="loveDiaryChangeMonth(1)" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">›</button>
+    </div>
+
+    <!-- 件数サマリー -->
+    <div id="diary-summary" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;"></div>
+
+    <!-- 記録一覧 -->
+    <div id="diary-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+
+    <!-- 合い言葉設定 -->
+    <div class="card" style="margin-top:8px;background:rgba(255,105,180,0.03);border:1px solid rgba(255,105,180,0.15);">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.82rem;color:#ff69b4;margin-bottom:10px;">🔑 合い言葉設定</div>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="diary-pass-new" placeholder="新しい合い言葉" maxlength="20"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+        <button onclick="loveDiarySetPass()" style="padding:8px 14px;background:rgba(255,105,180,0.15);border:1px solid rgba(255,105,180,0.3);border-radius:8px;color:#ff69b4;font-size:0.8rem;cursor:pointer;white-space:nowrap;">変更</button>
+      </div>
+      <div id="diary-pass-msg" style="font-size:0.72rem;color:var(--green);margin-top:6px;min-height:14px;"></div>
+    </div>
+
   </div>
 </div>
 
@@ -2722,6 +2909,7 @@ window.switchTab = function(n) {
 
   // 恋愛タブ：カレンダー・リスト初期化
   if (n === 'love') {
+    switchLoveTab('calendar');
     renderLoveCal();
     renderLoveEventList();
     const status = document.getElementById('love-sync-status');
@@ -6865,6 +7053,722 @@ function renderChatMsgs(isPolling = false) {
   if (wasAtBottom || !isPolling) c.scrollTop = c.scrollHeight;
 }
 
+// ════ 恋愛発展記録 ════
+const LOVE_PROGRESS_KEY = 'kouki-app/love_progress';
+const LOVE_PROGRESS_LS  = 'kouki_love_progress';
+
+// ステージ定義（恋愛プロジェクト独自の5段階）
+const LOVE_STAGES = [
+  {
+    id:'s1', icon:'👋', label:'ステージ1',
+    sublabel:'挨拶・認知',
+    range:'0〜20%', weight:15,
+    desc:'視線が合う・挨拶できる関係。関係が始まった状態',
+    tips:'安定して挨拶が続いていればマイナスではない'
+  },
+  {
+    id:'s2', icon:'💬', label:'ステージ2',
+    sublabel:'自然な会話',
+    range:'20〜40%', weight:20,
+    desc:'30秒以上の自然な会話が複数回ある・共通話題ができ始める',
+    tips:'長さより回数が重要。会話の回数を積み重ねる'
+  },
+  {
+    id:'s3', icon:'💗', label:'ステージ3',
+    sublabel:'好意圏内・相互交流',
+    range:'40〜60%', weight:25,
+    desc:'相手からも話しかけてくる・休日や好きなことなど個人的な話題が出る',
+    tips:'特別感が生まれ始める段階。ここで止まらないことが重要'
+  },
+  {
+    id:'s4', icon:'📱', label:'ステージ4',
+    sublabel:'連絡先・プライベート',
+    range:'60〜80%', weight:25,
+    desc:'連絡先交換・軽いプライベートのお誘い（カフェなど）',
+    tips:'連絡先は到達報酬ではなく関係を深める加速装置。空気が整うまで急がない'
+  },
+  {
+    id:'s5', icon:'💑', label:'ステージ5',
+    sublabel:'告白・交際',
+    range:'80〜100%', weight:15,
+    desc:'終日デート・好意の明確化・関係が一段階進むフェーズ',
+    tips:'ここまで来たら自信を持って正直に'
+  },
+];
+
+// 評価項目（プロジェクト実績ベース）
+const LOVE_FACTORS = [
+  { id:'greet',    label:'挨拶・目線',     icon:'👀', desc:'目が合う・遠くから手を振ってくれる' },
+  { id:'memory',   label:'記憶・関心',     icon:'🎂', desc:'誕生日・休日など個人情報を覚えている' },
+  { id:'initiate', label:'相手からの接触', icon:'💬', desc:'相手から話しかけてくる頻度' },
+  { id:'private',  label:'プライベート話', icon:'🏠', desc:'休みの過ごし方など個人的な話題が出る' },
+  { id:'special',  label:'特別扱い度',     icon:'✨', desc:'他の同僚と明らかに態度が違う' },
+  { id:'timing',   label:'タイミング・環境',icon:'⏰', desc:'社内環境・新人入社前の時期的有利さ' },
+];
+
+// デフォルト初期データ（プロジェクトの記録を反映）
+const LOVE_DEFAULT_DATA = {
+  name: '',
+  stages: {
+    s1: { done: true,  date: '2025-08-01', score: 5, memo: '8月〜相手からの継続的なアプローチ確認。挨拶・視線・笑顔が安定して続く' },
+    s2: { done: true,  date: '2025-12-31', score: 5, memo: '大晦日のからかい＆励まし。冗談のキャッチボール成立。勤務状況・残業など日常的な状況共有が自然に行われるように' },
+    s3: { done: true,  date: '2026-02-01', score: 4, memo: '遠くから手を振る・「休憩？」と相手から声かけ・不在を覚えている。接触が偶然から日常化へ移行。相手が下の名前での自己表現' },
+    s4: { done: true,  date: '2026-03-20', score: 4, memo: '3/20「昨日いた？」・3/25「昨日出勤した？」で不在を互いに気にする双方向確認が確定。「いないと気になる」関係へ移行完了。火・水・木の定期接点が恒常化。※連絡先交換・プライベートの誘いはまだ課題' },
+    s5: { done: false, date: '', score: 0, memo: '' },
+  },
+  factors: {
+    greet:    5,  // 遠くから手を振る・相手から声かけ・目が合う
+    memory:   5,  // 休みの日・不在を覚えている・誕生日を覚えると発言（2月）
+    initiate: 4,  // 相手発信の声かけ複数回・「休憩？」・廊下での話しかけ
+    private:  3,  // 勤務状況・残業共有はある。プライベートな話題・誘いはまだ
+    special:  4,  // 誰にでも挨拶するタイプだが、自分への行動は明らかに別枠
+    timing:   3,  // 定期接点確保済み。連絡先交換まで空気が整うのを待つ段階
+  },
+  note: '職場の同僚（4歳年上・別部署・社交的）。2025年8月から関係が始まり2026年3月末にS4定着後半。「いないと気になる」双方向の意識が言語化された。連絡先交換・プライベートの誘いはまだ。方針：壊さないこと優先・会話の回数を維持しつつ1回の深さを少しずつ上げていく。'
+};
+
+let _loveProgress = null;
+
+function loveSwitchTab_load() {
+  _loveProgress = loadLoveProgress();
+  renderLoveStages();
+  renderLoveGauge();
+  renderLoveRoadmap();
+  renderLoveChart();
+  renderLoveAdvice();
+  const nameEl = document.getElementById('love-target-name');
+  if (nameEl && _loveProgress.name) nameEl.value = _loveProgress.name;
+}
+
+function loadLoveProgress() {
+  try {
+    const s = localStorage.getItem(LOVE_PROGRESS_LS);
+    if (s) {
+      const parsed = JSON.parse(s);
+      // stages/factorsが空の場合はデフォルトをマージ
+      if (!parsed.stages || Object.keys(parsed.stages).length === 0) {
+        parsed.stages = JSON.parse(JSON.stringify(LOVE_DEFAULT_DATA.stages));
+      }
+      if (!parsed.factors || Object.keys(parsed.factors).length === 0) {
+        parsed.factors = JSON.parse(JSON.stringify(LOVE_DEFAULT_DATA.factors));
+      }
+      if (!parsed.name) parsed.name = LOVE_DEFAULT_DATA.name;
+      return parsed;
+    }
+  } catch {}
+  // 初回：デフォルトデータで初期化して保存
+  const def = JSON.parse(JSON.stringify(LOVE_DEFAULT_DATA));
+  localStorage.setItem(LOVE_PROGRESS_LS, JSON.stringify(def));
+  return def;
+}
+
+function saveLoveProgress() {
+  localStorage.setItem(LOVE_PROGRESS_LS, JSON.stringify(_loveProgress));
+  // Firebaseにも保存
+  if (window.mdb) window.mdb.ref(LOVE_PROGRESS_KEY).set(_loveProgress).catch(()=>{});
+}
+
+window.switchLoveTab = function(tab) {
+  // progress / diary は合い言葉が必要
+  if ((tab === 'progress' || tab === 'diary') && !_lovePassUnlocked) {
+    // 先にタブUIだけ切り替えておく（モーダル表示後にコールバックで本処理）
+    loveRequirePass(tab, () => switchLoveTab(tab));
+    return;
+  }
+  ['calendar','progress','diary'].forEach(t => {
+    const sec = document.getElementById('lsec-' + t);
+    const btn = document.getElementById('ltab-' + t);
+    if (sec) sec.style.display = t === tab ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'progress') loveSwitchTab_load();
+  if (tab === 'diary')    loveDiaryInit();
+};
+
+window.loveProgressSaveMeta = function() {
+  if (!_loveProgress) _loveProgress = loadLoveProgress();
+  _loveProgress.name = document.getElementById('love-target-name')?.value.trim() || '';
+  saveLoveProgress();
+};
+
+// ── ステージ一覧の描画 ──
+function renderLoveStages() {
+  const container = document.getElementById('love-stages-list');
+  if (!container) return;
+  container.innerHTML = '';
+  LOVE_STAGES.forEach(stage => {
+    const data = _loveProgress.stages?.[stage.id] || {};
+    const done = !!data.done;
+    const score = data.score || 0; // 0〜5
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid ' + (done ? 'rgba(255,105,180,0.4)' : 'var(--border)') + ';border-left:3px solid ' + (done ? '#ff69b4' : 'var(--border2)') + ';border-radius:10px;padding:12px 14px;transition:all 0.2s;';
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+      + '<button onclick="loveToggleStage(\'' + stage.id + '\')" style="font-size:1.3rem;background:none;border:none;cursor:pointer;transition:all 0.2s;padding:0;">'
+      + (done ? '✅' : '⬜') + '</button>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:0.88rem;color:' + (done ? '#ff69b4' : 'var(--text)') + ';font-weight:' + (done ? '700' : '400') + ';">' + stage.icon + ' ' + stage.label + '</div>'
+      + '<div style="font-size:0.7rem;color:var(--muted2);">' + stage.desc + '</div>'
+      + '</div>'
+      + (data.date ? '<span style="font-size:0.68rem;color:var(--muted2);font-family:\'DM Mono\',monospace;">' + data.date + '</span>' : '')
+      + '</div>'
+      + (done ? (
+        // 達成済み: 日付・評価・メモ入力
+        '<div style="display:flex;flex-direction:column;gap:6px;">'
+        + '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;">'
+        + '<span style="font-size:0.7rem;color:var(--muted2);white-space:nowrap;">📅 達成日</span>'
+        + '<input type="date" id="love-stage-date-' + stage.id + '" value="' + (data.date||'') + '"'
+        + ' onchange="loveUpdateStage(\'' + stage.id + '\')"'
+        + ' style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:4px 8px;color:var(--text);font-size:0.8rem;outline:none;">'
+        + '</div>'
+        + '<div>'
+        + '<div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">⭐ この段階の手応え</div>'
+        + '<div style="display:flex;gap:4px;">'
+        + [1,2,3,4,5].map(n =>
+            '<button onclick="loveSetScore(\'' + stage.id + '\',' + n + ')" '
+            + 'style="font-size:1.1rem;background:none;border:none;cursor:pointer;padding:2px;">'
+            + (n <= score ? '⭐' : '☆') + '</button>'
+          ).join('')
+        + '</div>'
+        + '</div>'
+        + '<input type="text" id="love-stage-memo-' + stage.id + '" placeholder="メモ（任意）" value="' + esc(data.memo||'') + '" maxlength="60"'
+        + ' onchange="loveUpdateStage(\'' + stage.id + '\')"'
+        + ' style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:0.8rem;outline:none;">'
+        + '</div>'
+      ) : '')
+    ;
+    container.appendChild(card);
+  });
+
+  // 評価項目
+  const fEl = document.createElement('div');
+  fEl.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;';
+  fEl.innerHTML = '<div style="font-family:\'Shippori Mincho\',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:10px;">🔍 相性評価（各5点満点）</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + LOVE_FACTORS.map(f => {
+        const sc = _loveProgress.factors?.[f.id] || 0;
+        return '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<span style="font-size:0.8rem;min-width:90px;color:var(--text);">' + f.icon + ' ' + f.label + '</span>'
+          + '<div style="display:flex;gap:3px;">'
+          + [1,2,3,4,5].map(n =>
+              '<button onclick="loveFactor(\'' + f.id + '\',' + n + ')" '
+              + 'style="font-size:1rem;background:none;border:none;cursor:pointer;padding:1px;">'
+              + (n <= sc ? '💗' : '🤍') + '</button>'
+            ).join('')
+          + '</div>'
+          + '<span style="font-size:0.75rem;color:var(--accent);font-family:\'DM Mono\',monospace;min-width:20px;">' + sc + '/5</span>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+  container.appendChild(fEl);
+}
+
+window.loveToggleStage = function(id) {
+  if (!_loveProgress) _loveProgress = loadLoveProgress();
+  if (!_loveProgress.stages) _loveProgress.stages = {};
+  const cur = _loveProgress.stages[id] || {};
+  if (cur.done) {
+    _loveProgress.stages[id] = { done: false };
+  } else {
+    _loveProgress.stages[id] = { done: true, date: toDateStr(new Date()), score: 3, memo: cur.memo || '' };
+  }
+  saveLoveProgress();
+  renderLoveStages();
+  renderLoveGauge();
+  renderLoveRoadmap();
+  renderLoveChart();
+  renderLoveAdvice();
+};
+
+window.loveUpdateStage = function(id) {
+  if (!_loveProgress?.stages?.[id]) return;
+  const dateEl = document.getElementById('love-stage-date-' + id);
+  const memoEl = document.getElementById('love-stage-memo-' + id);
+  if (dateEl) _loveProgress.stages[id].date = dateEl.value;
+  if (memoEl) _loveProgress.stages[id].memo = memoEl.value.trim();
+  saveLoveProgress();
+};
+
+window.loveSetScore = function(id, n) {
+  if (!_loveProgress?.stages?.[id]) return;
+  _loveProgress.stages[id].score = n;
+  saveLoveProgress();
+  renderLoveStages();
+  renderLoveGauge();
+  renderLoveChart();
+};
+
+window.loveFactor = function(id, n) {
+  if (!_loveProgress) _loveProgress = loadLoveProgress();
+  if (!_loveProgress.factors) _loveProgress.factors = {};
+  _loveProgress.factors[id] = n;
+  saveLoveProgress();
+  renderLoveStages();
+  renderLoveGauge();
+  renderLoveChart();
+  renderLoveAdvice();
+};
+
+// ── 成功確率の計算 ──
+function calcLoveProb() {
+  if (!_loveProgress) return { total: 0, stage: 0, factor: 0, detail: [] };
+
+  // ステージスコア：達成ステージのweight × (手応えスコア/5)
+  let stageScore = 0, maxStage = 0;
+  const detail = LOVE_STAGES.map(s => {
+    maxStage += s.weight;
+    const data = _loveProgress.stages?.[s.id] || {};
+    const done = !!data.done;
+    const sc   = done ? (data.score || 3) : 0;
+    const contrib = done ? s.weight * (sc / 5) : 0;
+    stageScore += contrib;
+    return { ...s, done, sc, contrib };
+  });
+
+  // 評価スコア（相性）：全項目平均 × 40点
+  const factorVals = LOVE_FACTORS.map(f => _loveProgress.factors?.[f.id] || 0);
+  const factorAvg  = factorVals.reduce((s, v) => s + v, 0) / (LOVE_FACTORS.length * 5);
+  const factorScore = factorAvg * 40;
+
+  // 最終確率（ステージ60% + 相性40%）
+  const stagePct  = maxStage > 0 ? (stageScore / maxStage) * 60 : 0;
+  const total     = Math.min(99, Math.round(stagePct + factorScore));
+
+  return { total, stagePct: Math.round(stagePct), factorPct: Math.round(factorScore), detail, factorVals };
+}
+
+// ── ゲージ描画（SVG） ──
+function renderLoveGauge() {
+  const el = document.getElementById('love-gauge-wrap');
+  if (!el) return;
+  const prob = calcLoveProb();
+  const pct  = prob.total;
+  const name = _loveProgress?.name || 'お相手';
+
+  // ゲージカラー
+  const color = pct >= 70 ? '#ff69b4' : pct >= 40 ? '#E8B84B' : '#9fc6e7';
+  const label = pct >= 80 ? '💕 かなり良い感じ！' : pct >= 60 ? '😊 脈あり！' : pct >= 40 ? '🌱 可能性あり' : pct >= 20 ? '📖 これから次第' : '🤍 まだスタート地点';
+
+  // 半円ゲージ SVG
+  const R = 80, cx = 110, cy = 100;
+  const startAngle = Math.PI;
+  const endAngle   = Math.PI + (pct / 100) * Math.PI;
+  const x1 = cx + R * Math.cos(startAngle);
+  const y1 = cy + R * Math.sin(startAngle);
+  const x2 = cx + R * Math.cos(endAngle);
+  const y2 = cy + R * Math.sin(endAngle);
+  const largeArc = pct > 50 ? 1 : 0;
+
+  const svg = '<svg viewBox="0 0 220 115" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:260px;">'
+    + '<defs><linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">'
+    + '<stop offset="0%" stop-color="' + (pct >= 40 ? '#ff69b4' : '#9fc6e7') + '"/>'
+    + '<stop offset="100%" stop-color="' + color + '"/>'
+    + '</linearGradient></defs>'
+    // 背景半円
+    + '<path d="M ' + (cx-R) + ' ' + cy + ' A ' + R + ' ' + R + ' 0 0 1 ' + (cx+R) + ' ' + cy + '" fill="none" stroke="var(--border2)" stroke-width="14" stroke-linecap="round"/>'
+    // 進捗半円
+    + (pct > 0 ? '<path d="M ' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A ' + R + ' ' + R + ' 0 ' + largeArc + ' 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round"/>' : '')
+    // 中央テキスト
+    + '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" font-family="\'DM Mono\',monospace" font-size="30" font-weight="700" fill="' + color + '">' + pct + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" font-size="12" fill="var(--muted2)">% 実現確率</text>'
+    + '</svg>';
+
+  el.innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">'
+    + svg
+    + '<div style="font-size:0.9rem;color:' + color + ';font-weight:700;font-family:\'Shippori Mincho\',serif;">' + label + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:4px;">'
+    + '<div style="text-align:center;background:rgba(255,105,180,0.07);border-radius:8px;padding:6px;">'
+    + '<div style="font-size:0.65rem;color:var(--muted2);">ステージ達成</div>'
+    + '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#ff69b4;">' + prob.stagePct + '<span style="font-size:0.7rem;">/60</span></div>'
+    + '</div>'
+    + '<div style="text-align:center;background:rgba(232,184,75,0.07);border-radius:8px;padding:6px;">'
+    + '<div style="font-size:0.65rem;color:var(--muted2);">相性スコア</div>'
+    + '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#E8B84B;">' + prob.factorPct + '<span style="font-size:0.7rem;">/40</span></div>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+// ── ロードマップ ──
+function renderLoveRoadmap() {
+  const el = document.getElementById('love-roadmap');
+  if (!el) return;
+  const doneCount = LOVE_STAGES.filter(s => _loveProgress?.stages?.[s.id]?.done).length;
+
+  el.innerHTML = LOVE_STAGES.map((s, i) => {
+    const done    = !!_loveProgress?.stages?.[s.id]?.done;
+    const current = !done && (i === 0 || !!_loveProgress?.stages?.[LOVE_STAGES[i-1]?.id]?.done);
+    const bg      = done ? '#ff69b4' : current ? 'rgba(255,105,180,0.2)' : 'var(--surface2)';
+    const border  = done ? '#ff69b4' : current ? 'rgba(255,105,180,0.5)' : 'var(--border2)';
+    const textCol = done ? '#fff' : current ? '#ff69b4' : 'var(--muted2)';
+    return (i > 0 ? '<div style="flex:1;min-width:8px;height:2px;background:' + (done ? '#ff69b4' : 'var(--border2)') + ';margin-top:-10px;"></div>' : '')
+      + '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;">'
+      + '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';border:2px solid ' + border + ';display:flex;align-items:center;justify-content:center;font-size:0.85rem;">' + (done ? '✓' : s.icon) + '</div>'
+      + '<div style="font-size:0.55rem;color:' + textCol + ';text-align:center;max-width:36px;line-height:1.2;">' + s.label.replace('・','\n') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── 棒グラフ（SVG） ──
+function renderLoveChart() {
+  const el = document.getElementById('love-chart-wrap');
+  if (!el) return;
+  const prob = calcLoveProb();
+
+  // ステージ達成状況
+  const stageData = LOVE_STAGES.map(s => ({
+    label: s.label.length > 5 ? s.label.slice(0, 5) : s.label,
+    val: _loveProgress?.stages?.[s.id]?.done ? (_loveProgress.stages[s.id].score || 3) : 0,
+    max: 5, color: '#ff69b4'
+  }));
+  // 相性評価
+  const factorData = LOVE_FACTORS.map(f => ({
+    label: f.label.length > 5 ? f.label.slice(0, 5) : f.label,
+    val: _loveProgress?.factors?.[f.id] || 0,
+    max: 5, color: '#E8B84B'
+  }));
+
+  const allData = [...stageData, ...factorData];
+  const W = 320, H = 120, padL = 8, padR = 8, padT = 12, padB = 22;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const bw = Math.floor(plotW / allData.length) - 2;
+
+  const bars = allData.map((d, i) => {
+    const x    = padL + i * (plotW / allData.length) + 1;
+    const bh   = (d.val / d.max) * plotH;
+    const y    = padT + plotH - bh;
+    const col  = d.val === 0 ? 'var(--border2)' : d.color;
+    return '<rect x="' + x.toFixed(0) + '" y="' + y.toFixed(0) + '" width="' + bw + '" height="' + bh.toFixed(0) + '" fill="' + col + '" rx="3"/>'
+      + '<text x="' + (x + bw/2).toFixed(0) + '" y="' + (padT + plotH + 12).toFixed(0) + '" text-anchor="middle" font-size="5.5" fill="var(--muted2)">' + d.label + '</text>'
+      + (d.val > 0 ? '<text x="' + (x + bw/2).toFixed(0) + '" y="' + (y - 2).toFixed(0) + '" text-anchor="middle" font-size="6.5" fill="' + d.color + '">' + d.val + '</text>' : '');
+  }).join('');
+
+  // 区切り線（ステージ/相性の境界）
+  const divX = padL + stageData.length * (plotW / allData.length);
+
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;">'
+    + '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT+plotH) + '" stroke="var(--border2)" stroke-width="1"/>'
+    + '<line x1="' + padL + '" y1="' + (padT+plotH) + '" x2="' + (W-padR) + '" y2="' + (padT+plotH) + '" stroke="var(--border2)" stroke-width="1"/>'
+    + '<line x1="' + divX.toFixed(0) + '" y1="' + padT + '" x2="' + divX.toFixed(0) + '" y2="' + (padT+plotH) + '" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3,2"/>'
+    + '<text x="' + (divX/2 + padL/2).toFixed(0) + '" y="' + (padT-3) + '" text-anchor="middle" font-size="6" fill="#ff69b4">ステージ</text>'
+    + '<text x="' + ((divX + W - padR)/2).toFixed(0) + '" y="' + (padT-3) + '" text-anchor="middle" font-size="6" fill="#E8B84B">相性評価</text>'
+    + bars
+    + '</svg>';
+}
+
+// ── アドバイス ──
+function renderLoveAdvice() {
+  const card = document.getElementById('love-advice-card');
+  const text = document.getElementById('love-advice-text');
+  if (!card || !text) return;
+
+  const doneStages = LOVE_STAGES.filter(s => _loveProgress?.stages?.[s.id]?.done);
+  const prob = calcLoveProb();
+  const s4done = !!_loveProgress?.stages?.s4?.done;
+  const s5done = !!_loveProgress?.stages?.s5?.done;
+
+  if (!doneStages.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  let adviceText = '';
+
+  if (s5done) {
+    adviceText = '💑 <b>交際成立！</b> おめでとうございます。ここからが本番です。お互いを大切に。';
+  } else if (s4done) {
+    // 現在フェーズ：S4定着後半（週次レポート3/26時点）
+    adviceText =
+      '<b style="color:#ff69b4;">📍 現在地：ステージ4 定着後半</b>'
+      + '<div style="font-size:0.75rem;color:var(--muted2);margin-bottom:10px;">「いないと気になる」双方向の意識が確定済み</div>'
+      + '<div style="font-size:0.82rem;line-height:1.9;color:var(--text);">'
+      + '✅ <b>確定している強み</b><br>'
+      + '・不在を互いに気にする双方向確認（3/20・3/25）<br>'
+      + '・火・水・木の定期接点が恒常化<br>'
+      + '・相手発信の声かけが継続中<br>'
+      + '・「誰にでも挨拶するタイプ」でも自分への行動は別枠<br><br>'
+      + '📌 <b>現在の課題</b><br>'
+      + '・会話時間が短い<br>'
+      + '・プライベート要素がない<br>'
+      + '・連絡先交換がまだ<br><br>'
+      + '💡 <b>今の方針（週次レポートより）</b><br>'
+      + '・無理に進めない。自然な流れを最優先<br>'
+      + '・会話の<b>回数を維持</b>しながら、1回の<b>深さを少しずつ上げる</b><br>'
+      + '・苗字呼びを自然なタイミングで入れていく<br>'
+      + '・連絡先交換は空気が十分整うまで急がない<br>'
+      + '・社交的な行動と自分への行動を切り離して冷静に見る<br><br>'
+      + '<div style="background:rgba(255,105,180,0.08);border-radius:8px;padding:8px 10px;font-size:0.78rem;color:#ff69b4;font-style:italic;">'
+      + '「この恋は進むかどうかではなく、どう進めるかの段階に入っている」'
+      + '</div>'
+      + '</div>';
+  } else if (doneStages.length >= 3) {
+    adviceText =
+      '<b style="color:#ff69b4;">📍 ステージ3 ──── 好意圏内・安定接点フェーズ</b><br><br>'
+      + '相手からも話しかけてくる段階。ここが最も消耗しやすい曖昧ゾーン。<br><br>'
+      + '・個人的な話題を自然に出せているか確認<br>'
+      + '・「現状維持」は禁止。小さな前進を積み重ねること<br>'
+      + '・回数より1回の深さを意識して';
+  } else {
+    adviceText = '🌱 着実に関係を積み上げています。一歩一歩、焦らず。';
+  }
+
+  text.innerHTML = adviceText;
+}
+
+// ════ 恋愛記録表（日記） ════
+const LOVE_DIARY_KEY    = 'kouki-app/love_diary';
+const LOVE_DIARY_LS     = 'kouki_love_diary';
+const LOVE_PASS_LS      = 'kouki_love_pass';
+const LOVE_PASS_DEFAULT = 'love2510'; // 初期合い言葉
+
+let _diaryRecords  = [];
+let _diaryLoaded   = false;
+let _diaryYear     = new Date().getFullYear();
+let _diaryMonth    = new Date().getMonth();
+let _diaryStar     = 0;
+let _diaryFormOpen = false;
+let _lovePassUnlocked = false; // セッション中のロック解除状態
+
+// ── 合い言葉 ──
+function getLovePass() {
+  return localStorage.getItem(LOVE_PASS_LS) || LOVE_PASS_DEFAULT;
+}
+
+window.lovePassSubmit = function() {
+  const input = document.getElementById('love-pass-input');
+  const err   = document.getElementById('love-pass-error');
+  if (!input) return;
+  if (input.value === getLovePass()) {
+    _lovePassUnlocked = true;
+    document.getElementById('love-pass-modal').style.display = 'none';
+    input.value = '';
+    err.textContent = '';
+    // タブを改めて初期化
+    const active = document.querySelector('#love-panel .wtab.active');
+    if (active) {
+      const t = active.id.replace('ltab-','');
+      if (t === 'progress') loveSwitchTab_load();
+      if (t === 'diary')    loveDiaryInit();
+    }
+  } else {
+    err.textContent = '合い言葉が違います';
+    input.value = '';
+    input.focus();
+  }
+};
+
+window.loveDiarySetPass = function() {
+  const inp = document.getElementById('diary-pass-new');
+  const msg = document.getElementById('diary-pass-msg');
+  const val = inp?.value.trim();
+  if (!val) { msg.style.color='var(--red)'; msg.textContent='合い言葉を入力してください'; return; }
+  localStorage.setItem(LOVE_PASS_LS, val);
+  inp.value = '';
+  msg.style.color='var(--green)'; msg.textContent='✅ 合い言葉を変更しました';
+  setTimeout(() => { msg.textContent=''; }, 2500);
+};
+
+function loveRequirePass(tab, callback) {
+  if (_lovePassUnlocked) { callback(); return; }
+  // モーダル表示
+  const modal = document.getElementById('love-pass-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('love-pass-input')?.focus(), 100);
+  }
+}
+
+// ── 記録表初期化 ──
+function loveDiaryInit() {
+  loveRequirePass('diary', () => {
+    _loveDiaryLoad();
+    loveDiaryRenderMonth();
+    loveDiaryRenderList();
+    const di = document.getElementById('diary-date');
+    if (di && !di.value) di.value = toDateStr(new Date());
+  });
+}
+
+function _loveDiaryLoad() {
+  if (_diaryLoaded) return;
+  try {
+    const s = localStorage.getItem(LOVE_DIARY_LS);
+    _diaryRecords = s ? JSON.parse(s) : [];
+  } catch { _diaryRecords = []; }
+  // Firebase からも取得
+  if (window.mdb) {
+    window.mdb.ref(LOVE_DIARY_KEY).on('value', snap => {
+      const data = snap.val();
+      if (data) {
+        _diaryRecords = Object.entries(data).map(([id, v]) => ({ id, ...v }))
+          .sort((a, b) => b.date.localeCompare(a.date));
+        localStorage.setItem(LOVE_DIARY_LS, JSON.stringify(_diaryRecords));
+        loveDiaryRenderMonth();
+        loveDiaryRenderList();
+      }
+    });
+  }
+  _diaryLoaded = true;
+}
+
+function loveDiaryRenderMonth() {
+  const el = document.getElementById('diary-month-label');
+  if (el) el.textContent = _diaryYear + '年' + (_diaryMonth + 1) + '月';
+}
+
+window.loveDiaryChangeMonth = function(dir) {
+  _diaryMonth += dir;
+  if (_diaryMonth > 11) { _diaryMonth = 0; _diaryYear++; }
+  if (_diaryMonth < 0)  { _diaryMonth = 11; _diaryYear--; }
+  loveDiaryRenderMonth();
+  loveDiaryRenderList();
+};
+
+window.loveDiaryToggleForm = function() {
+  _diaryFormOpen = !_diaryFormOpen;
+  const form = document.getElementById('love-diary-form');
+  const btn  = document.getElementById('love-diary-add-btn');
+  if (form) form.style.display = _diaryFormOpen ? 'block' : 'none';
+  if (btn)  btn.textContent = _diaryFormOpen ? '✕ 閉じる' : '＋ 記録を追加';
+  if (_diaryFormOpen) {
+    const di = document.getElementById('diary-date');
+    if (di && !di.value) di.value = toDateStr(new Date());
+    _diaryStar = 0;
+    loveDiaryRenderStars();
+    ['diary-content','diary-reaction','diary-self','diary-memo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const cs = document.getElementById('diary-contact'); if (cs) cs.value = '';
+    document.getElementById('diary-save-msg').textContent = '';
+  }
+};
+
+const STAR_LABELS = ['','⭐ 普通','⭐⭐ まあまあ','⭐⭐⭐ 良い','⭐⭐⭐⭐ かなり良い','⭐⭐⭐⭐⭐ 最高の日！'];
+
+window.loveDiarySetStar = function(n) {
+  _diaryStar = n;
+  loveDiaryRenderStars();
+};
+
+function loveDiaryRenderStars(score = _diaryStar) {
+  const container = document.getElementById('diary-stars');
+  if (!container) return;
+  container.querySelectorAll('.diary-star').forEach(btn => {
+    btn.textContent = Number(btn.dataset.n) <= score ? '⭐' : '☆';
+  });
+  const lbl = document.getElementById('diary-star-label');
+  if (lbl) lbl.textContent = STAR_LABELS[score] || '';
+}
+
+window.loveDiarySave = async function() {
+  const date    = document.getElementById('diary-date')?.value;
+  const contact = document.getElementById('diary-contact')?.value;
+  const content = document.getElementById('diary-content')?.value.trim();
+  const reaction= document.getElementById('diary-reaction')?.value.trim();
+  const self_   = document.getElementById('diary-self')?.value.trim();
+  const memo    = document.getElementById('diary-memo')?.value.trim();
+  const msg     = document.getElementById('diary-save-msg');
+
+  if (!date) { msg.style.color='var(--red)'; msg.textContent='日付を選択してください'; return; }
+  if (!content && !contact) { msg.style.color='var(--red)'; msg.textContent='内容を入力してください'; return; }
+
+  const record = { date, ts: Date.now() };
+  if (contact)  record.contact  = contact;
+  if (content)  record.content  = content;
+  if (reaction) record.reaction = reaction;
+  if (self_)    record.self     = self_;
+  if (memo)     record.memo     = memo;
+  if (_diaryStar) record.star   = _diaryStar;
+
+  const id = Date.now().toString() + '_' + Math.random().toString(36).slice(2,5);
+
+  try {
+    if (window.mdb) {
+      await window.mdb.ref(LOVE_DIARY_KEY + '/' + id).set(record);
+    } else {
+      _diaryRecords.unshift({ id, ...record });
+      localStorage.setItem(LOVE_DIARY_LS, JSON.stringify(_diaryRecords));
+      loveDiaryRenderList();
+    }
+    msg.style.color='var(--green)'; msg.textContent='✅ 記録しました';
+    setTimeout(() => { loveDiaryToggleForm(); }, 1200);
+  } catch(e) { msg.style.color='var(--red)'; msg.textContent='エラー: '+e.message; }
+};
+
+window.loveDiaryDelete = async function(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  if (window.mdb) {
+    await window.mdb.ref(LOVE_DIARY_KEY + '/' + id).remove();
+  } else {
+    _diaryRecords = _diaryRecords.filter(r => r.id !== id);
+    localStorage.setItem(LOVE_DIARY_LS, JSON.stringify(_diaryRecords));
+    loveDiaryRenderList();
+  }
+};
+
+function loveDiaryRenderList() {
+  const list    = document.getElementById('diary-list');
+  const summary = document.getElementById('diary-summary');
+  if (!list) return;
+
+  const prefix = _diaryYear + '-' + String(_diaryMonth + 1).padStart(2,'0');
+  const recs   = _diaryRecords.filter(r => r.date && r.date.startsWith(prefix))
+                               .sort((a,b) => b.date.localeCompare(a.date));
+
+  // サマリー
+  if (summary) {
+    const total    = recs.length;
+    const contact  = recs.filter(r => r.contact && r.contact !== 'なし').length;
+    const avgStar  = recs.filter(r=>r.star).reduce((s,r)=>s+r.star,0) / (recs.filter(r=>r.star).length||1);
+    summary.innerHTML =
+      '<div style="background:rgba(255,105,180,0.08);border:1px solid rgba(255,105,180,0.2);border-radius:10px;padding:8px 12px;text-align:center;flex:1;">'
+      + '<div style="font-size:0.65rem;color:var(--muted2);">記録件数</div>'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#ff69b4;font-weight:700;">' + total + '</div></div>'
+      + '<div style="background:rgba(255,105,180,0.08);border:1px solid rgba(255,105,180,0.2);border-radius:10px;padding:8px 12px;text-align:center;flex:1;">'
+      + '<div style="font-size:0.65rem;color:var(--muted2);">接触あり</div>'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#ff69b4;font-weight:700;">' + contact + '日</div></div>'
+      + (recs.filter(r=>r.star).length ? '<div style="background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.2);border-radius:10px;padding:8px 12px;text-align:center;flex:1;">'
+      + '<div style="font-size:0.65rem;color:var(--muted2);">平均評価</div>'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:1.1rem;color:#E8B84B;font-weight:700;">' + avgStar.toFixed(1) + '⭐</div></div>' : '');
+  }
+
+  if (!recs.length) {
+    list.innerHTML = '<div class="empty"><span class="empty-icon">📓</span>この月の記録がありません</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  recs.forEach(rec => {
+    const d   = new Date(rec.date + 'T00:00:00');
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    const dowColor = d.getDay()===0?'var(--red)':d.getDay()===6?'#6080a8':'var(--muted2)';
+    const starStr = rec.star ? '⭐'.repeat(rec.star) : '';
+    const contactColor =
+      rec.contact === 'あり（相手から）' ? '#ff69b4' :
+      rec.contact === 'あり（双方）'     ? '#7A9E7E' :
+      rec.contact === 'あり（自分から）' ? '#5B8DD9' : 'var(--muted)';
+
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-left:3px solid #ff69b4;border-radius:10px;padding:12px 14px;';
+    div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<span style="font-size:0.85rem;font-family:\'DM Mono\',monospace;color:' + dowColor + ';">'
+        + (d.getMonth()+1) + '/' + d.getDate() + '（' + dow + '）</span>'
+      + (rec.contact ? '<span style="font-size:0.7rem;color:' + contactColor + ';border:1px solid ' + contactColor + '44;border-radius:8px;padding:1px 6px;">' + esc(rec.contact) + '</span>' : '')
+      + (starStr ? '<span style="font-size:0.72rem;">' + starStr + '</span>' : '')
+      + '</div>'
+      + '<button onclick="loveDiaryDelete(\'' + rec.id + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.82rem;padding:2px 6px;">✕</button>'
+      + '</div>'
+      + (rec.content  ? '<div style="font-size:0.84rem;color:var(--text);line-height:1.6;margin-bottom:5px;white-space:pre-wrap;">' + esc(rec.content) + '</div>' : '')
+      + (rec.reaction ? '<div style="font-size:0.78rem;color:#ff69b4;line-height:1.5;margin-bottom:4px;">😊 ' + esc(rec.reaction) + '</div>' : '')
+      + (rec.self     ? '<div style="font-size:0.78rem;color:#9fc6e7;line-height:1.5;margin-bottom:4px;">🙋 ' + esc(rec.self) + '</div>' : '')
+      + (rec.memo     ? '<div style="font-size:0.75rem;color:var(--muted2);line-height:1.5;margin-top:4px;padding-top:6px;border-top:1px solid var(--border);">📝 ' + esc(rec.memo) + '</div>' : '');
+    list.appendChild(div);
+  });
+}
+
 // ════ 出発前チェックリスト ════
 const CHECKLIST_KEY = 'kouki_drive_checklist';
 
@@ -8029,13 +8933,27 @@ window.budgetSettingsChangeMonth=function(dir){
 };
 window.togglePrevBalEdit=function(){const edit=document.getElementById('bsum-prev-balance-edit');const show=edit.style.display!=='flex';edit.style.display=show?'flex':'none';if(show){const cur=_prevBalances[`${budgetYear}-${budgetMonth}`];document.getElementById('prev-balance-input').value=cur!==undefined?cur:'';}};
 window.savePrevBalance=function(){const raw=document.getElementById('prev-balance-input').value,val=raw===''?null:parseInt(raw),key=`${budgetYear}-${budgetMonth}`;if(val===null)delete _prevBalances[key];else _prevBalances[key]=val;localStorage.setItem(LS_PREV_BALANCE,JSON.stringify(_prevBalances));togglePrevBalEdit();renderBudgetMonthly();showMToast('先月残高を保存しました');};
-window.toggleIncomeEdit=function(){const edit=document.getElementById('bsum-income-edit');const show=edit.style.display!=='flex';edit.style.display=show?'flex':'none';if(show)document.getElementById('budget-income-monthly-input').value=_budgetSettings.income||'';};
-window.saveIncomeFromMonthly=function(){const val=parseInt(document.getElementById('budget-income-monthly-input').value);if(!isNaN(val)){budgetSaveIncome(val);const si=document.getElementById('spend-income');if(si){si.value=val;spendUpdateIncome(val);}}toggleIncomeEdit();renderBudgetMonthly();showMToast('月収を保存しました');};
+window.toggleIncomeEdit=function(){const edit=document.getElementById('bsum-income-edit');const show=edit.style.display!=='flex';edit.style.display=show?'flex':'none';if(show)document.getElementById('budget-income-monthly-input').value=getBudgetForMonth(budgetYear,budgetMonth).income||'';};
+window.saveIncomeFromMonthly=function(){
+  const val=parseInt(document.getElementById('budget-income-monthly-input').value);
+  if(!isNaN(val)){
+    // 月次決算で表示中の月に保存（グローバルには書かない）
+    const key=budgetSettingsKey(budgetYear,budgetMonth),cur=_budgetSettings[key]||{};
+    window.mdb.ref(`${window.FB_BUDGET}/${key}`).set({...cur,income:val});
+    const si=document.getElementById('spend-income');if(si){si.value=val;spendUpdateIncome(val);}
+  }
+  toggleIncomeEdit();renderBudgetMonthly();showMToast('月収を保存しました');
+};
 window.toggleCatMemo=function(){_catMemoVisible=!_catMemoVisible;const btn=document.getElementById('cat-memo-toggle-btn');if(btn)btn.textContent=_catMemoVisible?'📝 メモ非表示':'✏️ メモ入力';renderBudgetMonthly();};
 window.saveCatMemo=function(cat,val){const key=`${budgetYear}-${budgetMonth}-${cat}`;if(!val)delete _catMemos[key];else _catMemos[key]=val;localStorage.setItem(LS_CAT_MEMOS,JSON.stringify(_catMemos));};
 window.printMonthly=function(){document.title=`月次決算 ${budgetYear}年${budgetMonth+1}月`;window.print();document.title='功稀のページ';};
 function budgetSaveIncome(val){localStorage.setItem(BUDGET_INCOME_LS,val);window.mdb.ref(`${window.FB_BUDGET}/income`).set(Number(val));}
-window.budgetSaveIncomeForMonth=function(val){const key=budgetSettingsKey(budgetSettingsYear,budgetSettingsMonth),cur=_budgetSettings[key]||{};window.mdb.ref(`${window.FB_BUDGET}/${key}`).set({...cur,income:Number(val)});budgetSaveIncome(val);budgetUpdateTotal();};
+window.budgetSaveIncomeForMonth=function(val){
+  if(val===''||val===null||val===undefined)return;
+  const key=budgetSettingsKey(budgetSettingsYear,budgetSettingsMonth),cur=_budgetSettings[key]||{};
+  window.mdb.ref(`${window.FB_BUDGET}/${key}`).set({...cur,income:Number(val)});
+  budgetUpdateTotal();
+};
 window.budgetSaveCatForMonth=function(y,m,cat,val){const key=budgetSettingsKey(y,m),cur=_budgetSettings[key]||{},cats={...(cur.cats||{}),[cat]:Number(val)};window.mdb.ref(`${window.FB_BUDGET}/${key}`).set({...cur,cats});budgetUpdateTotal();};
 window.budgetUpdateTotal=function(){const inputs=document.querySelectorAll('#budget-cat-cards input[data-cat]');let total=0;inputs.forEach(inp=>total+=Number(inp.value)||0);const el=document.getElementById('budget-total-label');if(el)el.textContent=`¥${total.toLocaleString()}`;const income=Number(document.getElementById('budget-income-input')?.value||0),diffEl=document.getElementById('budget-income-diff');if(diffEl){if(!income){diffEl.textContent='—';diffEl.style.color='#9A8070';}else{const diff=income-total;diffEl.textContent=(diff>=0?'+':'')+`¥${diff.toLocaleString()}`;diffEl.style.color=diff>=0?'#7A9E7E':'#C0675A';}}};
 window.copyBudgetFromPrevMonth=function(){let prevY=budgetSettingsYear,prevM=budgetSettingsMonth-1;if(prevM<0){prevM=11;prevY--;}const prevData=getBudgetForMonth(prevY,prevM);if(!prevData.cats||!Object.keys(prevData.cats).length){showMToast('前月の予算データがありません');return;}const key=budgetSettingsKey(budgetSettingsYear,budgetSettingsMonth);window.mdb.ref(`${window.FB_BUDGET}/${key}`).set({...prevData}).then(()=>{showMToast(`${prevY}年${prevM+1}月の予算をコピーしました`);renderBudgetSettings();});};
@@ -8044,7 +8962,7 @@ function renderBudgetMonthly(){
   if(!document.getElementById('budget-month-label'))return;
   const start=spendCycleStart(budgetYear,budgetMonth),end=spendCycleEnd(budgetYear,budgetMonth);
   document.getElementById('budget-month-label').textContent=`${budgetYear}年${budgetMonth+1}月 (${start.getMonth()+1}/${start.getDate()}〜${end.getMonth()+1}/${end.getDate()})`;
-  const income=Number(getBudgetForMonth(budgetYear,budgetMonth).income||_budgetSettings.income||0),catBudgets=getBudgetForMonth(budgetYear,budgetMonth).cats||{},cycleItems=spendGetCycleItems(budgetYear,budgetMonth);
+  const income=Number(getBudgetForMonth(budgetYear,budgetMonth).income||0),catBudgets=getBudgetForMonth(budgetYear,budgetMonth).cats||{},cycleItems=spendGetCycleItems(budgetYear,budgetMonth);
   const actuals={};Object.keys(CAT_LABELS).forEach(k=>actuals[k]=0);cycleItems.forEach(i=>{if(actuals[i.cat]!==undefined)actuals[i.cat]+=Number(i.amount);else actuals[i.cat]=Number(i.amount);});
   const totalActual=cycleItems.reduce((s,i)=>s+Number(i.amount),0),totalBudget=Object.values(catBudgets).reduce((s,v)=>s+Number(v||0),0),balance=income-totalActual;
   const prevKey=`${budgetYear}-${budgetMonth}`,storedPrev=_prevBalances[prevKey],prevBal=storedPrev!==undefined&&storedPrev!==null?storedPrev:null;
@@ -8070,7 +8988,7 @@ function renderBudgetSettings(){
   if(!document.getElementById('budget-settings-month-label'))return;
   const start=spendCycleStart(budgetSettingsYear,budgetSettingsMonth),end=spendCycleEnd(budgetSettingsYear,budgetSettingsMonth);
   document.getElementById('budget-settings-month-label').textContent=`${budgetSettingsYear}年${budgetSettingsMonth+1}月 (${start.getMonth()+1}/${start.getDate()}〜${end.getMonth()+1}/${end.getDate()})`;
-  const mdata=getBudgetForMonth(budgetSettingsYear,budgetSettingsMonth),income=Number(mdata.income||_budgetSettings.income||0),catBudgets=mdata.cats||{};
+  const mdata=getBudgetForMonth(budgetSettingsYear,budgetSettingsMonth),income=Number(mdata.income||0),catBudgets=mdata.cats||{};
   const el=document.getElementById('budget-income-input');if(el&&!el.matches(':focus'))el.value=income||'';
   const cards=document.getElementById('budget-cat-cards');cards.innerHTML='';
   Object.entries(CAT_LABELS).forEach(([key,label])=>{
@@ -8088,9 +9006,16 @@ function renderBudgetYearly(){
   if(!document.getElementById('budget-year-label'))return;
   document.getElementById('budget-year-label').textContent=`${budgetYearDisp}年`;
   const months=Array.from({length:12},(_,i)=>i),totals=months.map(m=>spendGetCycleItems(budgetYearDisp,m).reduce((s,i)=>s+Number(i.amount),0));
-  const income=Number(_budgetSettings.income||0),totalBudget=Object.values(_budgetSettings.cats||{}).reduce((s,v)=>s+Number(v||0),0),annualTotal=totals.reduce((s,v)=>s+v,0);
-  if(typeof Chart!=='undefined'){const ctx=document.getElementById('yearly-chart').getContext('2d');if(_yearlyChartInst)_yearlyChartInst.destroy();const datasets=[{label:'実績支出',data:totals,backgroundColor:totals.map(v=>v>(totalBudget||income||Infinity)?'rgba(192,103,90,0.7)':'rgba(91,141,217,0.7)'),borderRadius:4,type:'bar'}];if(totalBudget)datasets.push({label:'予算',data:Array(12).fill(totalBudget),type:'line',borderColor:'#E8B84B',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false});if(income)datasets.push({label:'月収',data:Array(12).fill(income),type:'line',borderColor:'#7A9E7E',borderWidth:2,borderDash:[3,3],pointRadius:0,fill:false});_yearlyChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(m=>`${m+1}月`),datasets},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'¥'+(v/10000).toFixed(0)+'万',font:{size:10}}},x:{ticks:{font:{size:10}}}}}});}
-  const table=document.getElementById('yearly-table');table.innerHTML=`<div style="background:white;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><div style="font-family:sans-serif;font-size:0.88rem;color:#4A2C1A;margin-bottom:10px">月別明細</div>${months.map(m=>{const v=totals[m],bal=income?income-v:null;return`<div class="yearly-row"><div style="font-size:0.82rem;color:#9A8070;width:36px">${m+1}月</div><div style="flex:1;font-size:0.88rem;color:#4A2C1A">¥${v.toLocaleString()}</div>${bal!==null?`<div style="font-size:0.82rem;font-weight:700;color:${bal>=0?'#7A9E7E':'#C0675A'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</div>`:''}</div>`;}).join('')}<div style="display:flex;justify-content:space-between;padding:10px 0 0;border-top:2px solid #F5E6D0;margin-top:4px"><span style="font-size:0.88rem;color:#4A2C1A">年間合計</span><span style="font-size:1rem;font-weight:700;color:#C0675A">¥${annualTotal.toLocaleString()}</span></div></div>`;
+  // 月ごとの月収を個別取得（グローバル income ではなく月別データを参照）
+  const monthlyIncomes=months.map(m=>Number(getBudgetForMonth(budgetYearDisp,m).income||0));
+  const totalBudget=Object.values(_budgetSettings.cats||{}).reduce((s,v)=>s+Number(v||0),0),annualTotal=totals.reduce((s,v)=>s+v,0);
+  const annualIncome=monthlyIncomes.reduce((s,v)=>s+v,0);
+  if(typeof Chart!=='undefined'){const ctx=document.getElementById('yearly-chart').getContext('2d');if(_yearlyChartInst)_yearlyChartInst.destroy();
+    const datasets=[{label:'実績支出',data:totals,backgroundColor:totals.map((v,i)=>v>(monthlyIncomes[i]||Infinity)?'rgba(192,103,90,0.7)':'rgba(91,141,217,0.7)'),borderRadius:4,type:'bar'}];
+    if(totalBudget)datasets.push({label:'予算',data:Array(12).fill(totalBudget),type:'line',borderColor:'#E8B84B',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false});
+    if(annualIncome)datasets.push({label:'月収',data:monthlyIncomes,type:'line',borderColor:'#7A9E7E',borderWidth:2,borderDash:[3,3],pointRadius:3,fill:false});
+    _yearlyChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(m=>`${m+1}月`),datasets},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'¥'+(v/10000).toFixed(0)+'万',font:{size:10}}},x:{ticks:{font:{size:10}}}}}});}
+  const table=document.getElementById('yearly-table');table.innerHTML=`<div style="background:white;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><div style="font-family:sans-serif;font-size:0.88rem;color:#4A2C1A;margin-bottom:10px">月別明細</div>${months.map(m=>{const v=totals[m],inc=monthlyIncomes[m],bal=inc?inc-v:null;return`<div class="yearly-row"><div style="font-size:0.82rem;color:#9A8070;width:36px">${m+1}月</div><div style="flex:1;font-size:0.88rem;color:#4A2C1A">¥${v.toLocaleString()}</div>${bal!==null?`<div style="font-size:0.82rem;font-weight:700;color:${bal>=0?'#7A9E7E':'#C0675A'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</div>`:''}</div>`;}).join('')}<div style="display:flex;justify-content:space-between;padding:10px 0 0;border-top:2px solid #F5E6D0;margin-top:4px"><span style="font-size:0.88rem;color:#4A2C1A">年間合計</span><span style="font-size:1rem;font-weight:700;color:#C0675A">¥${annualTotal.toLocaleString()}</span></div></div>`;
 }
 
 // 資産シミュレーター
