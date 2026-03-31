@@ -454,24 +454,6 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   <div id="lsec-calendar" style="padding:16px;display:block;">
     <div class="sec-title">💕 恋愛</div>
 
-    <!-- PDF表示エリア -->
-    <div id="love-pdf-area" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;"></div>
-
-    <!-- 管理者モード -->
-    <div id="love-admin" style="display:none;margin-bottom:12px;">
-      <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:8px;">PDFを最大3枚までアップロードできます（差し替え式）</div>
-      <button onclick="document.getElementById('love-pdf-input').click()"
-        class="add-ev-btn" style="border-color:var(--accent);color:var(--accent);">
-        📄 PDFをアップロード（最大3枚）
-      </button>
-      <input type="file" id="love-pdf-input" accept="application/pdf" multiple style="display:none" onchange="uploadLovePdfs(this)">
-      <div id="love-upload-status" style="font-size:0.78rem;text-align:center;margin-top:6px;min-height:18px;"></div>
-    </div>
-    <button onclick="toggleLoveAdmin()" id="love-admin-btn"
-      style="background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;">
-      ⚙️ 管理者モード
-    </button>
-
     <!-- 恋愛カレンダー連携 -->
     <div style="margin-top:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -510,6 +492,42 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
   <!-- ═══ 発展記録タブ ═══ -->
   <div id="lsec-progress" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+    <!-- 合い言葉バナー -->
+    <div style="background:linear-gradient(135deg,rgba(255,105,180,0.08),rgba(232,184,75,0.06));border:1px solid rgba(255,105,180,0.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;text-align:center;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.82rem;color:#ff69b4;letter-spacing:0.08em;line-height:1.8;">
+        「偶然ではなく、設計で生きる。」
+      </div>
+    </div>
+
+    <!-- 4月以降の方針カード -->
+    <div class="card" style="margin-bottom:14px;background:rgba(91,141,217,0.04);border:1px solid rgba(91,141,217,0.18);">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.85rem;color:#5B8DD9;margin-bottom:10px;">📋 4月以降の方針</div>
+      <div style="font-size:0.8rem;color:var(--text);line-height:1.9;">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;">
+          <span style="color:#5B8DD9;flex-shrink:0;margin-top:1px;">▸</span>
+          <span><b>クール期間</b>（6ヶ月〜最大1年）：業務集中・感情消耗の防止</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;">
+          <span style="color:#5B8DD9;flex-shrink:0;margin-top:1px;">▸</span>
+          <span><b>壊さないこと</b>を最優先。自然な流れを維持</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;">
+          <span style="color:#5B8DD9;flex-shrink:0;margin-top:1px;">▸</span>
+          <span>会話の<b>回数を維持</b>しながら、1回の<b>深さを少しずつ</b>上げる</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="color:#E8B84B;flex-shrink:0;margin-top:1px;">⏰</span>
+          <span>判断期限：最大4月末 ／ 苗字呼びを自然なタイミングで</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 記録表からの最近の動き -->
+    <div class="card" style="margin-bottom:14px;background:rgba(255,105,180,0.03);border:1px solid rgba(255,105,180,0.15);" id="love-recent-diary-card">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.85rem;color:#ff69b4;margin-bottom:8px;">📓 最近の記録（記録表より）</div>
+      <div id="love-recent-diary" style="font-size:0.8rem;color:var(--muted2);">記録表にデータがありません</div>
+    </div>
 
     <!-- タイトル＋相手の名前 -->
     <div class="card" style="margin-bottom:14px;">
@@ -550,6 +568,24 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <div class="card" id="love-advice-card" style="display:none;margin-bottom:16px;background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.2);">
       <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:8px;">💡 次のアクション提案</div>
       <div id="love-advice-text" style="font-size:0.85rem;color:var(--text);line-height:1.7;"></div>
+    </div>
+
+    <!-- データリセット -->
+    <div class="card" style="margin-bottom:16px;background:rgba(192,96,96,0.04);border:1px solid rgba(192,96,96,0.18);">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.82rem;color:var(--red);margin-bottom:8px;">🔄 恋愛プロジェクトのリセット</div>
+      <div style="font-size:0.75rem;color:var(--muted2);margin-bottom:12px;line-height:1.6;">
+        恋愛が終わった・次の相手に切り替えるときに使用。<br>
+        ステージ記録・相性評価・お相手の名前がリセットされます。<br>
+        <b style="color:var(--muted2);">※ 日々の記録表データは別途リセットできます。</b>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="loveProgressReset()" style="flex:1;padding:10px;background:rgba(192,96,96,0.08);border:1px solid rgba(192,96,96,0.3);border-radius:10px;color:var(--red);font-size:0.82rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+          🔄 発展記録をリセット
+        </button>
+        <button onclick="loveDiaryReset()" style="flex:1;padding:10px;background:rgba(192,96,96,0.08);border:1px solid rgba(192,96,96,0.3);border-radius:10px;color:var(--red);font-size:0.82rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+          📓 記録表をリセット
+        </button>
+      </div>
     </div>
 
   </div>
@@ -7136,8 +7172,82 @@ function loveSwitchTab_load() {
   renderLoveRoadmap();
   renderLoveChart();
   renderLoveAdvice();
+  renderLoveRecentDiary();
   const nameEl = document.getElementById('love-target-name');
   if (nameEl && _loveProgress.name) nameEl.value = _loveProgress.name;
+}
+
+// ── 記録表の最近のデータを発展記録に反映 ──
+function renderLoveRecentDiary() {
+  const el = document.getElementById('love-recent-diary');
+  if (!el) return;
+
+  // localStorageから記録表データを取得
+  let records = [];
+  try {
+    const s = localStorage.getItem(LOVE_DIARY_LS);
+    records = s ? JSON.parse(s) : [];
+  } catch { records = []; }
+
+  if (!records.length) {
+    el.innerHTML = '<div style="color:var(--muted2);">記録表にデータがありません</div>';
+    return;
+  }
+
+  // 日付降順で最新5件
+  const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  // 月の接触件数サマリー（今月分）
+  const now = new Date();
+  const prefix = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const thisMonth = records.filter(r => r.date && r.date.startsWith(prefix));
+  const contactCount = thisMonth.filter(r => r.contact && r.contact !== 'なし').length;
+  const contactInitiated = thisMonth.filter(r => r.contact === 'あり（相手から）' || r.contact === 'あり（双方）').length;
+  const avgStar = thisMonth.filter(r => r.star).length
+    ? (thisMonth.filter(r => r.star).reduce((s, r) => s + r.star, 0) / thisMonth.filter(r => r.star).length).toFixed(1)
+    : null;
+
+  let html = '';
+
+  // 今月サマリー
+  if (thisMonth.length) {
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<span style="font-size:0.72rem;background:rgba(255,105,180,0.1);color:#ff69b4;border:1px solid rgba(255,105,180,0.25);border-radius:8px;padding:2px 8px;">今月の記録 ' + thisMonth.length + '件</span>'
+      + (contactCount ? '<span style="font-size:0.72rem;background:rgba(122,158,126,0.1);color:#7A9E7E;border:1px solid rgba(122,158,126,0.3);border-radius:8px;padding:2px 8px;">接触あり ' + contactCount + '日</span>' : '')
+      + (contactInitiated ? '<span style="font-size:0.72rem;background:rgba(255,105,180,0.08);color:#ff69b4;border:1px solid rgba(255,105,180,0.2);border-radius:8px;padding:2px 8px;">相手発信 ' + contactInitiated + '回</span>' : '')
+      + (avgStar ? '<span style="font-size:0.72rem;background:rgba(232,184,75,0.1);color:#E8B84B;border:1px solid rgba(232,184,75,0.3);border-radius:8px;padding:2px 8px;">平均 ' + avgStar + '⭐</span>' : '')
+      + '</div>';
+  }
+
+  // 最新5件のタイムライン
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  sorted.forEach(rec => {
+    const d   = new Date(rec.date + 'T00:00:00');
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    const contactColor =
+      rec.contact === 'あり（相手から）' ? '#ff69b4' :
+      rec.contact === 'あり（双方）'     ? '#7A9E7E' :
+      rec.contact === 'あり（自分から）' ? '#5B8DD9' : 'var(--muted)';
+    const starStr = rec.star ? '⭐'.repeat(rec.star) : '';
+
+    html += '<div style="display:flex;gap:8px;align-items:flex-start;">'
+      + '<div style="flex-shrink:0;width:56px;font-size:0.68rem;font-family:\'DM Mono\',monospace;color:var(--muted2);padding-top:2px;">'
+        + (d.getMonth()+1) + '/' + d.getDate() + '(' + dow + ')</div>'
+      + '<div style="flex:1;min-width:0;">'
+        + (rec.contact ? '<span style="font-size:0.68rem;color:' + contactColor + ';margin-right:4px;">' + esc(rec.contact) + '</span>' : '')
+        + (starStr ? '<span style="font-size:0.65rem;margin-right:4px;">' + starStr + '</span>' : '')
+        + (rec.content ? '<div style="font-size:0.78rem;color:var(--text);line-height:1.5;margin-top:2px;white-space:pre-wrap;word-break:break-all;">' + esc(rec.content.length > 60 ? rec.content.slice(0, 60) + '…' : rec.content) + '</div>' : '')
+        + (rec.reaction ? '<div style="font-size:0.72rem;color:#ff69b4;margin-top:2px;">😊 ' + esc(rec.reaction.length > 40 ? rec.reaction.slice(0, 40) + '…' : rec.reaction) + '</div>' : '')
+      + '</div>'
+    + '</div>';
+  });
+  html += '</div>';
+
+  if (records.length > 5) {
+    html += '<div style="font-size:0.7rem;color:var(--muted2);margin-top:8px;text-align:center;">記録表タブで全件確認できます（全' + records.length + '件）</div>';
+  }
+
+  el.innerHTML = html;
 }
 
 function loadLoveProgress() {
@@ -7167,6 +7277,39 @@ function saveLoveProgress() {
   // Firebaseにも保存
   if (window.mdb) window.mdb.ref(LOVE_PROGRESS_KEY).set(_loveProgress).catch(()=>{});
 }
+
+// ── 発展記録リセット ──
+window.loveProgressReset = function() {
+  if (!confirm('発展記録（ステージ・相性評価・お相手の名前）をリセットしますか？\n\n次の恋愛に向けて新しくスタートします。')) return;
+  if (!confirm('本当によろしいですか？この操作は取り消せません。')) return;
+  const fresh = { name:'', stages:{}, factors:{}, note:'' };
+  _loveProgress = fresh;
+  localStorage.setItem(LOVE_PROGRESS_LS, JSON.stringify(fresh));
+  if (window.mdb) window.mdb.ref(LOVE_PROGRESS_KEY).set(fresh).catch(()=>{});
+  const nameEl = document.getElementById('love-target-name');
+  if (nameEl) nameEl.value = '';
+  renderLoveStages();
+  renderLoveGauge();
+  renderLoveRoadmap();
+  renderLoveChart();
+  renderLoveAdvice();
+  renderLoveRecentDiary();
+  alert('✅ 発展記録をリセットしました。新しい出発点からスタートです。');
+};
+
+// ── 記録表リセット ──
+window.loveDiaryReset = function() {
+  if (!confirm('日々の記録表をすべて削除しますか？\n\nFirebase上のデータも削除されます。')) return;
+  if (!confirm('本当によろしいですか？この操作は取り消せません。')) return;
+  _diaryRecords = [];
+  _diaryLoaded = false;
+  localStorage.removeItem(LOVE_DIARY_LS);
+  if (window.mdb) window.mdb.ref(LOVE_DIARY_KEY).remove().catch(()=>{});
+  loveDiaryRenderMonth();
+  loveDiaryRenderList();
+  renderLoveRecentDiary();
+  alert('✅ 記録表をリセットしました。');
+};
 
 window.switchLoveTab = function(tab) {
   // progress / diary は合い言葉が必要
@@ -7692,7 +7835,13 @@ window.loveDiarySave = async function() {
       loveDiaryRenderList();
     }
     msg.style.color='var(--green)'; msg.textContent='✅ 記録しました';
-    setTimeout(() => { loveDiaryToggleForm(); }, 1200);
+    setTimeout(() => {
+      loveDiaryToggleForm();
+      // 発展記録タブが開いていれば最近の動きを更新
+      if (document.getElementById('lsec-progress')?.style.display !== 'none') {
+        renderLoveRecentDiary();
+      }
+    }, 1200);
   } catch(e) { msg.style.color='var(--red)'; msg.textContent='エラー: '+e.message; }
 };
 
