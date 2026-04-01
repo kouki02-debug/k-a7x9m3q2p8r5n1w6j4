@@ -313,10 +313,10 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <div class="login-section-label">— パスワードでログイン —</div>
     <div class="login-input-wrap">
       <input type="password" class="login-input" id="pw-input" placeholder="パスワードを入力"
-        autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        autocomplete="current-password" onkeydown="if(event.key==='Enter')window.doLogin&&window.doLogin()">
       <button class="toggle-pw" onclick="togglePw()">👁</button>
     </div>
-    <button class="login-btn" onclick="doLogin()">ログイン</button>
+    <button class="login-btn" onclick="window.doLogin&&window.doLogin()">ログイン</button>
     <div class="divider">または</div>
     <button class="google-btn" onclick="doGoogleLogin()">
       <div class="google-icon"></div>Googleアカウントでログイン
@@ -383,48 +383,205 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <div id="todo-list"></div>
   </div>
 
-  <div class="panel" id="calendar-panel">
-    <!-- お知らせPDFエリア -->
-    <div id="notice-area" style="margin-bottom:16px;">
-      <div class="sec-title">📢 お知らせ</div>
-      <div id="notice-images" style="display:flex;flex-direction:column;gap:14px;"></div>
-      <!-- 管理者モード：アップロードボタン -->
-      <div id="notice-admin" style="display:none;margin-top:10px;">
-        <button onclick="document.getElementById('notice-file-input').click()"
-          class="add-ev-btn" style="border-color:var(--accent);color:var(--accent);">
-          📄 PDFを差し替え（最大9ページ・名前順）
-        </button>
-        <input type="file" id="notice-file-input" accept="application/pdf" multiple style="display:none" onchange="uploadNoticeImages(this)">
-        <div id="notice-upload-status" style="font-size:0.78rem;text-align:center;margin-top:6px;color:var(--muted2);"></div>
-      </div>
-      <button onclick="toggleAdminMode()" id="admin-toggle-btn"
-        style="margin-top:8px;background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;letter-spacing:0.05em;">
-        ⚙️ 管理者モード
-      </button>
+  <div class="panel" id="calendar-panel" style="padding:0;">
+
+    <!-- サブタブ -->
+    <div style="display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;">
+      <button class="wtab active" id="ctab-list" onclick="switchCalTab('list')">📅 カレンダー</button>
+      <button class="wtab" id="ctab-adjust" onclick="switchCalTab('adjust')">🔀 調整</button>
+      <button class="wtab" id="ctab-suggest" onclick="switchCalTab('suggest')">💡 空き時間</button>
+      <button class="wtab" id="ctab-birthday" onclick="switchCalTab('birthday')">🎂 誕生日</button>
+      <button class="wtab" id="ctab-graph" onclick="switchCalTab('graph')">📊 グラフ</button>
     </div>
-    <!-- 個人予定カレンダー -->
-    <div id="cal-personal">
-      <div class="cal-header">
-        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
-        <span class="cal-month" id="cal-month-label"></span>
-        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+
+    <!-- ═══ カレンダーリストタブ ═══ -->
+    <div id="csec-list" style="padding:16px;display:block;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+      <!-- 月ナビ＋同期 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button onclick="calListChangeMonth(-1)" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--accent);padding:2px 8px;">‹</button>
+          <span id="cal-list-month" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--text);font-weight:700;min-width:80px;text-align:center;"></span>
+          <button onclick="calListChangeMonth(1)" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--accent);padding:2px 8px;">›</button>
+        </div>
+        <button onclick="calListSync()" id="cal-list-sync-btn"
+          style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(91,141,217,0.1);border:1px solid rgba(91,141,217,0.3);border-radius:20px;color:#5B8DD9;font-size:0.75rem;cursor:pointer;">
+          🔄 同期
+        </button>
       </div>
-      <div class="cal-grid" id="cal-grid"></div>
-      <div class="sec-title">今後の予定</div>
-      <div id="event-list"></div>
-      <button class="add-ev-btn" onclick="toggleEventForm()">＋ 予定を追加</button>
-      <div class="add-event-form" id="add-event-form">
-        <input type="date" id="ev-date">
-        <input type="text" id="ev-title" placeholder="予定の内容" maxlength="30">
-        <div class="form-btns">
-          <button class="save-btn" onclick="addEvent()">保存</button>
-          <button class="cancel-btn" onclick="toggleEventForm()">キャンセル</button>
+
+      <!-- 凡例 -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <span style="font-size:0.68rem;padding:2px 8px;border-radius:10px;background:rgba(200,169,110,0.12);color:var(--accent);border:1px solid rgba(200,169,110,0.3);">① 個人・家族</span>
+        <span style="font-size:0.68rem;padding:2px 8px;border-radius:10px;background:rgba(255,105,180,0.1);color:#ff69b4;border:1px solid rgba(255,105,180,0.3);">② 恋人</span>
+        <span style="font-size:0.68rem;padding:2px 8px;border-radius:10px;background:rgba(91,141,217,0.1);color:#5B8DD9;border:1px solid rgba(91,141,217,0.3);">③ 友人・同僚</span>
+        <span style="font-size:0.68rem;padding:2px 8px;border-radius:10px;background:rgba(122,158,126,0.1);color:#7A9E7E;border:1px solid rgba(122,158,126,0.3);">仕事</span>
+      </div>
+
+      <!-- 同期ステータス -->
+      <div id="cal-list-status" style="font-size:0.72rem;color:var(--muted2);text-align:center;margin-bottom:10px;min-height:14px;"></div>
+
+      <!-- イベントリスト -->
+      <div id="cal-list-events" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+      <!-- 個人予定追加 -->
+      <div style="margin-top:16px;">
+        <button onclick="calListToggleForm()" id="cal-list-add-btn"
+          style="width:100%;padding:10px;background:rgba(200,169,110,0.08);border:1px dashed var(--accent);border-radius:10px;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:'Shippori Mincho',serif;">
+          ＋ ① 個人予定を追加
+        </button>
+        <div id="cal-list-form" style="display:none;margin-top:10px;">
+          <div class="card" style="border:1px solid rgba(200,169,110,0.25);">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">日付</div>
+                  <input type="date" id="cal-add-date" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+                </div>
+                <div>
+                  <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">優先度</div>
+                  <select id="cal-add-priority" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.82rem;outline:none;">
+                    <option value="1">① 個人・家族</option>
+                    <option value="2">② 恋人</option>
+                    <option value="3">③ 友人・同僚</option>
+                  </select>
+                </div>
+              </div>
+              <input type="text" id="cal-add-title" placeholder="予定の内容" maxlength="40"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+              <div style="display:flex;gap:8px;">
+                <button onclick="calListAddEvent()" style="flex:1;padding:10px;background:var(--accent);border:none;border-radius:9px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.9rem;cursor:pointer;font-weight:700;">💾 保存</button>
+                <button onclick="calListToggleForm()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;color:var(--muted2);font-size:0.85rem;cursor:pointer;">✕</button>
+              </div>
+              <div id="cal-add-msg" style="font-size:0.75rem;text-align:center;min-height:14px;color:var(--green);"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-</div>
+    <!-- ═══ 予定調整タブ ═══ -->
+    <div id="csec-adjust" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+      <!-- 月選択 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <button onclick="calAdjChangeMonth(-1)" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--accent);padding:2px 8px;">‹</button>
+        <span id="cal-adj-month" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--text);font-weight:700;"></span>
+        <button onclick="calAdjChangeMonth(1)" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--accent);padding:2px 8px;">›</button>
+      </div>
+
+      <!-- シミュレーションルール説明 -->
+      <div style="background:rgba(91,141,217,0.05);border:1px solid rgba(91,141,217,0.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem;color:var(--text);line-height:1.7;">
+        <div style="color:#5B8DD9;font-weight:700;margin-bottom:4px;">📋 予定調整ルール</div>
+        ① 個人・家族 ≧ ② 恋人 ＞ ③ 友人・同僚<br>
+        月に最低1週間は <b>③ の予定を入れない週</b>を確保<br>
+        ② の予定が入っている週は③を調整して優先
+      </div>
+
+      <!-- 週ごとのシミュレーション -->
+      <div id="cal-adj-simulation" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+
+      <!-- 総括 -->
+      <div id="cal-adj-summary" class="card" style="display:none;background:rgba(122,158,126,0.05);border:1px solid rgba(122,158,126,0.2);"></div>
+    </div>
+
+    <!-- ═══ 空き時間サジェストタブ ═══ -->
+    <div id="csec-suggest" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--accent);">💡 空き時間サジェスト</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="month" id="suggest-month-input"
+            style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;color:var(--text);font-size:0.8rem;outline:none;">
+          <button onclick="calSuggestRun()" style="padding:6px 12px;background:rgba(200,169,110,0.12);border:1px solid var(--accent);border-radius:18px;color:var(--accent);font-size:0.75rem;cursor:pointer;white-space:nowrap;">🔍 分析</button>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:12px;line-height:1.6;">
+        シフト・休日・既存予定を参照して「② に誘える日」「③ を入れられる日」を自動提案します。
+      </div>
+      <div id="suggest-result" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+
+    <!-- ═══ 誕生日・記念日リマインダータブ ═══ -->
+    <div id="csec-birthday" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--accent);">🎂 誕生日・記念日</div>
+        <button onclick="calBirthdayToggleAdd()" id="birthday-add-btn"
+          style="padding:6px 12px;background:rgba(200,169,110,0.1);border:1px solid var(--accent);border-radius:18px;color:var(--accent);font-size:0.75rem;cursor:pointer;">＋ 追加</button>
+      </div>
+
+      <!-- 追加フォーム -->
+      <div id="birthday-form" style="display:none;margin-bottom:14px;">
+        <div class="card" style="border:1px solid rgba(200,169,110,0.25);">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input type="text" id="bday-name" placeholder="名前（例：おばあちゃん、友人Aさん）" maxlength="20"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:0.88rem;outline:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">月日（毎年）</div>
+                <input type="text" id="bday-mmdd" placeholder="例: 04-08" maxlength="5" pattern="\d{2}-\d{2}"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.9rem;outline:none;font-family:'DM Mono',monospace;">
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:3px;">事前通知（日前）</div>
+                <select id="bday-remind" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+                  <option value="3">3日前</option>
+                  <option value="7" selected>1週間前</option>
+                  <option value="14">2週間前</option>
+                  <option value="30">1ヶ月前</option>
+                </select>
+              </div>
+            </div>
+            <select id="bday-category" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+              <option value="family">👨‍👩‍👧 家族・親族</option>
+              <option value="friend">👥 友人・知人</option>
+              <option value="work">🏭 職場</option>
+              <option value="other">📌 その他</option>
+            </select>
+            <div style="display:flex;gap:8px;">
+              <button onclick="calBirthdaySave()" style="flex:1;padding:10px;background:var(--accent);border:none;border-radius:9px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.9rem;cursor:pointer;font-weight:700;">💾 保存</button>
+              <button onclick="calBirthdayToggleAdd()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;color:var(--muted2);font-size:0.85rem;cursor:pointer;">✕</button>
+            </div>
+            <div id="bday-msg" style="font-size:0.75rem;text-align:center;min-height:14px;color:var(--green);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 直近リマインダー -->
+      <div id="birthday-upcoming" style="margin-bottom:16px;"></div>
+
+      <!-- 登録済みリスト -->
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.85rem;color:var(--accent);margin-bottom:8px;">📋 登録済み</div>
+      <div id="birthday-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <!-- ═══ 月間バランスグラフタブ ═══ -->
+    <div id="csec-graph" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--accent);">📊 月間バランスグラフ</div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <button onclick="calGraphChangeMonth(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--accent);">‹</button>
+          <span id="graph-month-label" style="font-size:0.85rem;color:var(--text);min-width:70px;text-align:center;"></span>
+          <button onclick="calGraphChangeMonth(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--accent);">›</button>
+        </div>
+      </div>
+
+      <!-- 円グラフ -->
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:0.82rem;color:var(--muted2);margin-bottom:10px;">予定の種別割合</div>
+        <div id="graph-pie" style="display:flex;align-items:center;gap:16px;"></div>
+      </div>
+
+      <!-- 週別棒グラフ -->
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:0.82rem;color:var(--muted2);margin-bottom:10px;">週別の予定件数（①②③別）</div>
+        <div id="graph-bar"></div>
+      </div>
+
+      <!-- 数値サマリー -->
+      <div id="graph-summary" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+  </div>
 
 <!-- 恋愛パネル -->
 <div class="panel" id="love-panel" style="padding:0;">
@@ -434,6 +591,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     <button class="wtab active" id="ltab-calendar" onclick="switchLoveTab('calendar')">💗 カレンダー</button>
     <button class="wtab" id="ltab-progress" onclick="switchLoveTab('progress')">📊 発展記録</button>
     <button class="wtab" id="ltab-diary" onclick="switchLoveTab('diary')">📓 記録表</button>
+    <button class="wtab" id="ltab-analysis" onclick="switchLoveTab('analysis')">📈 分析</button>
   </div>
 
   <!-- ═══ 合い言葉モーダル ═══ -->
@@ -724,6 +882,71 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     </div>
 
   </div>
+
+  <!-- ═══ 分析タブ ═══ -->
+  <div id="lsec-analysis" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+    <!-- ① 接触パターン分析 -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:12px;">📊 接触パターン分析</div>
+      <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:10px;">曜日・種別ごとの接触頻度</div>
+      <div id="analysis-dow-chart" style="min-height:100px;"></div>
+      <div style="font-size:0.72rem;color:var(--muted2);margin-top:12px;margin-bottom:6px;">接触種別の割合</div>
+      <div id="analysis-contact-type" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      <div style="font-size:0.72rem;color:var(--muted2);margin-top:12px;margin-bottom:4px;">週別トレンド（直近8週）</div>
+      <div id="analysis-weekly-trend" style="min-height:80px;"></div>
+    </div>
+
+    <!-- ⑥ リスク指標 -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:12px;">🚦 リスク指標</div>
+      <div id="analysis-risk" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+
+    <!-- ⑤ 次のアクションタイマー -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:12px;">⏳ 次のアクションタイマー</div>
+      <div id="analysis-timer" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <!-- マイルストーン手動登録 -->
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:6px;">📌 アクション記録を追加</div>
+        <div style="display:flex;gap:6px;">
+          <select id="analysis-action-type" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 9px;color:var(--text);font-size:0.8rem;outline:none;">
+            <option value="">選択...</option>
+            <option value="name_call">名前呼び（苗字）</option>
+            <option value="contact_topic">連絡先話題</option>
+            <option value="invite">誘い発言</option>
+            <option value="private_talk">プライベート話題</option>
+            <option value="birthday">誕生日トーク</option>
+          </select>
+          <input type="date" id="analysis-action-date" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 9px;color:var(--text);font-size:0.8rem;outline:none;">
+          <button onclick="loveActionRecord()" style="padding:7px 12px;background:rgba(255,105,180,0.12);border:1px solid rgba(255,105,180,0.3);border-radius:8px;color:#ff69b4;font-size:0.8rem;cursor:pointer;white-space:nowrap;">記録</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ 判断フローシミュレーター -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;margin-bottom:12px;">🧠 判断フローシミュレーター</div>
+      <div style="font-size:0.75rem;color:var(--muted2);margin-bottom:10px;">今日の出来事を入力すると「S4維持 / 前進 / 要警戒」を判定します</div>
+      <textarea id="analysis-flow-input" rows="3" placeholder="今日あったこと・相手の反応・気になったことを入力..."
+        style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:0.85rem;outline:none;resize:none;line-height:1.6;margin-bottom:8px;"></textarea>
+      <button onclick="loveFlowSimulate()" style="width:100%;padding:10px;background:rgba(255,105,180,0.1);border:1px solid rgba(255,105,180,0.3);border-radius:10px;color:#ff69b4;font-size:0.88rem;cursor:pointer;font-family:'Shippori Mincho',serif;">🔍 判定する</button>
+      <div id="analysis-flow-result" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- ⑧ 週次レポート自動生成 -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;">📝 週次レポート自動生成</div>
+        <button onclick="loveGenerateWeeklyReport()" style="padding:6px 12px;background:rgba(255,105,180,0.12);border:1px solid rgba(255,105,180,0.3);border-radius:20px;color:#ff69b4;font-size:0.75rem;cursor:pointer;white-space:nowrap;">🔄 生成</button>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:8px;" id="analysis-report-range"></div>
+      <div id="analysis-report-content" style="font-size:0.82rem;color:var(--text);line-height:1.8;"></div>
+    </div>
+
+  </div>
+
 </div>
 
 <!-- 仕事パネル -->
@@ -2971,6 +3194,11 @@ window.switchTab = function(n) {
     if (status && !status.textContent) {
       status.textContent = `✅ 恋愛2510 ${getLoveEvents().length}件 同期済み（最終取得: 2026-03-20）`;
     }
+  }
+
+  // 予定タブ：カレンダーリスト初期化
+  if (n === 'calendar') {
+    switchCalTab('list');
   }
 };
 
@@ -7349,13 +7577,12 @@ window.loveDiaryReset = function() {
 };
 
 window.switchLoveTab = function(tab) {
-  // progress / diary は合い言葉が必要
-  if ((tab === 'progress' || tab === 'diary') && !_lovePassUnlocked) {
-    // 先にタブUIだけ切り替えておく（モーダル表示後にコールバックで本処理）
+  // progress / diary / analysis は合い言葉が必要
+  if ((tab === 'progress' || tab === 'diary' || tab === 'analysis') && !_lovePassUnlocked) {
     loveRequirePass(tab, () => switchLoveTab(tab));
     return;
   }
-  ['calendar','progress','diary'].forEach(t => {
+  ['calendar','progress','diary','analysis'].forEach(t => {
     const sec = document.getElementById('lsec-' + t);
     const btn = document.getElementById('ltab-' + t);
     if (sec) sec.style.display = t === tab ? 'block' : 'none';
@@ -7363,6 +7590,7 @@ window.switchLoveTab = function(tab) {
   });
   if (tab === 'progress') loveSwitchTab_load();
   if (tab === 'diary')    loveDiaryInit();
+  if (tab === 'analysis') loveAnalysisInit();
 };
 
 window.loveProgressSaveMeta = function() {
@@ -8210,6 +8438,1231 @@ function extractWeeklySummary(text) {
   }
   // 取れなければ先頭150字
   return text.slice(0,150).replace(/\s+/g,' ');
+}
+
+// ════ 恋愛 分析タブ ════
+const LOVE_ACTIONS_LS = 'kouki_love_actions'; // [{type, date, label}]
+
+function loveAnalysisInit() {
+  loveRequirePass('analysis', () => {
+    _loveAnalysisRender();
+    // アクション日付デフォルト
+    const ad = document.getElementById('analysis-action-date');
+    if (ad && !ad.value) ad.value = toDateStr(new Date());
+  });
+}
+
+function _loveAnalysisRender() {
+  let diaryRecs = [];
+  try { diaryRecs = JSON.parse(localStorage.getItem(LOVE_DIARY_LS) || '[]'); } catch {}
+  diaryRecs.sort((a,b) => a.date.localeCompare(b.date));
+
+  _renderDowChart(diaryRecs);
+  _renderContactType(diaryRecs);
+  _renderWeeklyTrend(diaryRecs);
+  _renderRiskIndicators(diaryRecs);
+  _renderActionTimers(diaryRecs);
+}
+
+// ── ① 接触パターン：曜日グラフ ──
+function _renderDowChart(recs) {
+  const el = document.getElementById('analysis-dow-chart');
+  if (!el) return;
+
+  const DOW_LABELS = ['日','月','火','水','木','金','土'];
+  const counts     = [0,0,0,0,0,0,0]; // 全接触
+  const fromOther  = [0,0,0,0,0,0,0]; // 相手発信
+  let total = 0;
+
+  recs.forEach(r => {
+    if (!r.contact || r.contact === 'なし') return;
+    const d = new Date(r.date + 'T00:00:00');
+    const dow = d.getDay();
+    counts[dow]++;
+    total++;
+    if (r.contact === 'あり（相手から）' || r.contact === 'あり（双方）') fromOther[dow]++;
+  });
+
+  const maxCount = Math.max(...counts, 1);
+  const W = 300, H = 90, padL = 18, padB = 18, padT = 6, padR = 8;
+  const bw = Math.floor((W - padL - padR) / 7) - 3;
+
+  const bars = counts.map((c, i) => {
+    const x  = padL + i * ((W - padL - padR) / 7) + 1;
+    const bh = (c / maxCount) * (H - padT - padB);
+    const y  = padT + (H - padT - padB) - bh;
+    const fo = fromOther[i];
+    const foH = (fo / maxCount) * (H - padT - padB);
+    const foY = padT + (H - padT - padB) - foH;
+    const isKey = i === 2 || i === 3 || i === 4; // 火水木
+    const barCol = isKey ? '#ff69b4' : 'rgba(255,105,180,0.35)';
+    return (bh > 0 ? '<rect x="'+x.toFixed(0)+'" y="'+y.toFixed(0)+'" width="'+bw+'" height="'+bh.toFixed(0)+'" fill="'+barCol+'" rx="3"/>' : '')
+      + (foH > 0 ? '<rect x="'+x.toFixed(0)+'" y="'+foY.toFixed(0)+'" width="'+bw+'" height="'+foH.toFixed(0)+'" fill="#ff69b4" rx="3" opacity="0.9"/>' : '')
+      + (c > 0 ? '<text x="'+(x+bw/2).toFixed(0)+'" y="'+(y-3).toFixed(0)+'" text-anchor="middle" font-size="8" fill="#ff69b4">'+c+'</text>' : '')
+      + '<text x="'+(x+bw/2).toFixed(0)+'" y="'+(H-padB+12).toFixed(0)+'" text-anchor="middle" font-size="9" fill="'+(isKey?'#ff69b4':'var(--muted2)')+'">'+DOW_LABELS[i]+'</text>';
+  }).join('');
+
+  el.innerHTML = total === 0
+    ? '<div style="text-align:center;font-size:0.78rem;color:var(--muted2);padding:16px;">記録表にデータがありません</div>'
+    : '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;">'
+      + '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(H-padB)+'" stroke="var(--border2)" stroke-width="0.5"/>'
+      + '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="var(--border2)" stroke-width="0.5"/>'
+      + bars
+      + '<text x="'+(W-padR-2)+'" y="'+(padT+8)+'" text-anchor="end" font-size="7" fill="#ff69b4">■相手発信</text>'
+      + '</svg>'
+      + '<div style="font-size:0.68rem;color:var(--muted2);text-align:right;margin-top:2px;">総接触 '+total+'日</div>';
+}
+
+// ── ① 接触種別割合 ──
+function _renderContactType(recs) {
+  const el = document.getElementById('analysis-contact-type');
+  if (!el) return;
+  const types = {'あり（相手から）':0,'あり（双方）':0,'あり（自分から）':0,'なし':0};
+  recs.forEach(r => { if (r.contact && types[r.contact] !== undefined) types[r.contact]++; });
+  const colors = {'あり（相手から）':'#ff69b4','あり（双方）':'#7A9E7E','あり（自分から）':'#5B8DD9','なし':'var(--border2)'};
+  const total = Object.values(types).reduce((s,v)=>s+v,0) || 1;
+  el.innerHTML = Object.entries(types)
+    .filter(([,v]) => v > 0)
+    .map(([k,v]) => '<span style="font-size:0.7rem;padding:2px 8px;border-radius:12px;border:1px solid '+colors[k]+'44;color:'+colors[k]+';background:'+colors[k]+'11;">'
+      + k + ' ' + v + '件 (' + Math.round(v/total*100) + '%)</span>').join('');
+}
+
+// ── ① 週別トレンド ──
+function _renderWeeklyTrend(recs) {
+  const el = document.getElementById('analysis-weekly-trend');
+  if (!el) return;
+
+  // 直近8週のデータを集計
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) {
+    const end   = new Date(); end.setDate(end.getDate() - w * 7);
+    const start = new Date(end); start.setDate(start.getDate() - 6);
+    const startStr = toDateStr(start), endStr = toDateStr(end);
+    const weekRecs = recs.filter(r => r.date >= startStr && r.date <= endStr);
+    const contact  = weekRecs.filter(r => r.contact && r.contact !== 'なし').length;
+    const fromOth  = weekRecs.filter(r => r.contact==='あり（相手から）'||r.contact==='あり（双方）').length;
+    const avgStar  = weekRecs.filter(r=>r.star).length
+      ? weekRecs.filter(r=>r.star).reduce((s,r)=>s+r.star,0)/weekRecs.filter(r=>r.star).length
+      : 0;
+    weeks.push({ label: (start.getMonth()+1)+'/'+start.getDate(), contact, fromOth, avgStar });
+  }
+
+  const maxC = Math.max(...weeks.map(w=>w.contact), 1);
+  const W = 300, H = 80, padL = 8, padR = 8, padT = 6, padB = 16;
+  const step = (W - padL - padR) / (weeks.length - 1);
+
+  const linePoints = weeks.map((w,i) => {
+    const x = padL + i * step;
+    const y = padT + (1 - w.contact / maxC) * (H - padT - padB);
+    return x.toFixed(0)+','+y.toFixed(0);
+  }).join(' ');
+
+  const linePointsFO = weeks.map((w,i) => {
+    const x = padL + i * step;
+    const y = padT + (1 - w.fromOth / maxC) * (H - padT - padB);
+    return x.toFixed(0)+','+y.toFixed(0);
+  }).join(' ');
+
+  const dots = weeks.map((w,i) => {
+    const x = padL + i * step;
+    const yC = padT + (1 - w.contact/maxC) * (H-padT-padB);
+    return '<circle cx="'+x.toFixed(0)+'" cy="'+yC.toFixed(0)+'" r="3" fill="rgba(255,105,180,0.5)"/>'
+      + '<text x="'+x.toFixed(0)+'" y="'+(H-padB+12)+'" text-anchor="middle" font-size="7" fill="var(--muted2)">'+w.label+'</text>';
+  }).join('');
+
+  el.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;">'
+    + '<polyline points="'+linePoints+'" fill="none" stroke="rgba(255,105,180,0.3)" stroke-width="2"/>'
+    + '<polyline points="'+linePointsFO+'" fill="none" stroke="#ff69b4" stroke-width="2" stroke-dasharray="4,2"/>'
+    + dots
+    + '<text x="'+(W-padR)+'" y="'+padT+'" text-anchor="end" font-size="7" fill="rgba(255,105,180,0.5)">─ 全接触</text>'
+    + '<text x="'+(W-padR)+'" y="'+(padT+10)+'" text-anchor="end" font-size="7" fill="#ff69b4">╌ 相手発信</text>'
+    + '</svg>';
+}
+
+// ── ⑥ リスク指標 ──
+function _renderRiskIndicators(recs) {
+  const el = document.getElementById('analysis-risk');
+  if (!el) return;
+
+  const today    = new Date();
+  const todayStr = toDateStr(today);
+
+  // 直近7日・14日・30日の接触記録
+  const last7  = recs.filter(r => r.date >= _daysAgo(7)  && r.date <= todayStr);
+  const last14 = recs.filter(r => r.date >= _daysAgo(14) && r.date <= todayStr);
+  const last30 = recs.filter(r => r.date >= _daysAgo(30) && r.date <= todayStr);
+
+  // 最終接触日
+  const lastContact = recs.filter(r => r.contact && r.contact !== 'なし').at(-1);
+  const daysSinceContact = lastContact
+    ? Math.floor((today - new Date(lastContact.date + 'T00:00:00')) / 86400000)
+    : 999;
+
+  // 相手発信率
+  const initRateL14 = last14.length
+    ? last14.filter(r=>r.contact==='あり（相手から）'||r.contact==='あり（双方）').length / Math.max(last14.filter(r=>r.contact&&r.contact!=='なし').length,1)
+    : 0;
+
+  // 平均評価の変化（前7日 vs 今7日）
+  const starsPrev = last14.filter(r=>r.star&&r.date<_daysAgo(7));
+  const starsNow  = last7.filter(r=>r.star);
+  const avgPrev   = starsPrev.length ? starsPrev.reduce((s,r)=>s+r.star,0)/starsPrev.length : 0;
+  const avgNow    = starsNow.length  ? starsNow.reduce((s,r)=>s+r.star,0)/starsNow.length : 0;
+
+  // 停滞日数（S4に入ってからの経過）
+  const s4Date  = _loveProgress?.stages?.s4?.date;
+  const stagnate = s4Date ? Math.floor((today - new Date(s4Date+'T00:00:00'))/86400000) : 0;
+
+  const indicators = [
+    {
+      label: '最終接触からの日数',
+      value: daysSinceContact > 900 ? '記録なし' : daysSinceContact + '日前',
+      signal: daysSinceContact <= 3 ? 'green' : daysSinceContact <= 7 ? 'yellow' : 'red',
+      note: daysSinceContact <= 3 ? '良好なペース' : daysSinceContact <= 7 ? 'そろそろ接触を' : '接触が途絶えています',
+    },
+    {
+      label: '直近14日の相手発信率',
+      value: Math.round(initRateL14 * 100) + '%',
+      signal: initRateL14 >= 0.5 ? 'green' : initRateL14 >= 0.3 ? 'yellow' : 'red',
+      note: initRateL14 >= 0.5 ? '相手から積極的' : initRateL14 >= 0.3 ? '発信はある' : '自分からが多い状態',
+    },
+    {
+      label: '評価トレンド',
+      value: avgNow > 0 ? (avgNow > avgPrev ? '⬆ 上昇' : avgNow < avgPrev ? '⬇ 低下' : '→ 横ばい') : '—',
+      signal: avgNow >= avgPrev || avgNow === 0 ? 'green' : avgNow >= avgPrev - 0.5 ? 'yellow' : 'red',
+      note: avgNow > avgPrev ? '最近の日が良い感じ' : avgNow < avgPrev ? '少しトーンが落ちているかも' : '安定維持中',
+    },
+    {
+      label: 'S4進入からの日数',
+      value: stagnate > 0 ? stagnate + '日経過' : '未計測',
+      signal: stagnate < 30 ? 'green' : stagnate < 60 ? 'yellow' : 'red',
+      note: stagnate < 30 ? '定着フェーズ中' : stagnate < 60 ? 'そろそろ次の展開を意識' : '長期停滞注意。方針を見直す時期かも',
+    },
+    {
+      label: '感情消耗度',
+      value: last7.filter(r=>r.star&&r.star<=2).length > 0 ? '⚠️ 高め' : last7.length > 0 ? '😊 良好' : '— 不明',
+      signal: last7.filter(r=>r.star&&r.star<=2).length > 0 ? 'red' : 'green',
+      note: last7.filter(r=>r.star&&r.star<=2).length > 0 ? '評価が低い日が続いています。一度距離を置いても可' : 'バランス良好',
+    },
+  ];
+
+  const sigColor = { green:'#7A9E7E', yellow:'#E8B84B', red:'#c06060' };
+  const sigBg    = { green:'rgba(122,158,126,0.08)', yellow:'rgba(232,184,75,0.08)', red:'rgba(192,96,96,0.08)' };
+  const sigIcon  = { green:'🟢', yellow:'🟡', red:'🔴' };
+
+  el.innerHTML = indicators.map(ind => `
+    <div style="display:flex;align-items:flex-start;gap:10px;background:${sigBg[ind.signal]};border:1px solid ${sigColor[ind.signal]}33;border-radius:10px;padding:9px 12px;">
+      <span style="font-size:1rem;flex-shrink:0;margin-top:1px;">${sigIcon[ind.signal]}</span>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.78rem;color:var(--text);">${ind.label}</span>
+          <span style="font-size:0.85rem;font-family:'DM Mono',monospace;font-weight:700;color:${sigColor[ind.signal]};">${ind.value}</span>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted2);margin-top:2px;">${ind.note}</div>
+      </div>
+    </div>`).join('');
+}
+
+function _daysAgo(n) {
+  const d = new Date(); d.setDate(d.getDate() - n);
+  return toDateStr(d);
+}
+
+// ── ⑤ アクションタイマー ──
+function _renderActionTimers(recs) {
+  const el = document.getElementById('analysis-timer');
+  if (!el) return;
+
+  let actions = [];
+  try { actions = JSON.parse(localStorage.getItem(LOVE_ACTIONS_LS) || '[]'); } catch {}
+
+  const ACTION_DEFS = {
+    name_call:     { label:'名前呼び（苗字）',    icon:'🗣️', cooldown:7,  next:'次回は自然なタイミングで再チャレンジ' },
+    contact_topic: { label:'連絡先の話題',        icon:'📱', cooldown:14, next:'焦らず空気が整うまで待つ' },
+    invite:        { label:'誘い発言',            icon:'☕', cooldown:10, next:'次回の自然なお誘いのタイミングを探す' },
+    private_talk:  { label:'プライベートな話題',  icon:'🏠', cooldown:5,  next:'継続して深めていく' },
+    birthday:      { label:'誕生日トーク',        icon:'🎂', cooldown:30, next:'次のイベント話題を探す' },
+  };
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+
+  // 記録表からも関連アクションを自動抽出
+  const autoActions = [];
+  recs.forEach(r => {
+    const text = (r.content||'')+(r.reaction||'')+(r.memo||'');
+    if (text.includes('名前') || text.includes('呼び')) autoActions.push({type:'name_call', date:r.date});
+    if (text.includes('連絡先') || text.includes('LINE')) autoActions.push({type:'contact_topic', date:r.date});
+    if (text.includes('誘い') || text.includes('行こう')) autoActions.push({type:'invite', date:r.date});
+  });
+
+  const allActions = [...actions, ...autoActions];
+
+  const items = Object.entries(ACTION_DEFS).map(([type, def]) => {
+    const related = allActions.filter(a => a.type === type).sort((a,b) => b.date.localeCompare(a.date));
+    const lastDate = related[0]?.date;
+    const daysSince = lastDate
+      ? Math.floor((today - new Date(lastDate+'T00:00:00')) / 86400000)
+      : null;
+    const coolRemain = daysSince !== null ? Math.max(0, def.cooldown - daysSince) : 0;
+    const ready = daysSince === null || coolRemain === 0;
+
+    return { type, def, lastDate, daysSince, coolRemain, ready };
+  });
+
+  el.innerHTML = items.map(item => {
+    const bg      = item.ready ? 'rgba(122,158,126,0.06)' : 'rgba(232,184,75,0.06)';
+    const border  = item.ready ? '#7A9E7E33' : '#E8B84B33';
+    const sigText = item.daysSince === null
+      ? '<span style="font-size:0.72rem;color:#7A9E7E;">まだ記録なし</span>'
+      : item.ready
+        ? '<span style="font-size:0.72rem;color:#7A9E7E;">✅ タイミングOK</span>'
+        : '<span style="font-size:0.72rem;color:#E8B84B;">あと '+item.coolRemain+'日 冷却中</span>';
+
+    return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:9px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+        <span style="font-size:0.82rem;color:var(--text);">${item.def.icon} ${item.def.label}</span>
+        ${sigText}
+      </div>
+      <div style="font-size:0.68rem;color:var(--muted2);">
+        ${item.lastDate ? '最終記録: '+item.lastDate+' ('+item.daysSince+'日前)' : '─'}
+        ${item.ready ? ' ／ ' + item.def.next : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.loveActionRecord = function() {
+  const type = document.getElementById('analysis-action-type')?.value;
+  const date = document.getElementById('analysis-action-date')?.value;
+  if (!type || !date) { alert('アクション種別と日付を選択してください'); return; }
+  let actions = [];
+  try { actions = JSON.parse(localStorage.getItem(LOVE_ACTIONS_LS) || '[]'); } catch {}
+  actions.push({ type, date, recordedAt: Date.now() });
+  localStorage.setItem(LOVE_ACTIONS_LS, JSON.stringify(actions));
+  document.getElementById('analysis-action-type').value = '';
+  let diaryRecs = [];
+  try { diaryRecs = JSON.parse(localStorage.getItem(LOVE_DIARY_LS) || '[]'); } catch {}
+  diaryRecs.sort((a,b) => a.date.localeCompare(b.date));
+  _renderActionTimers(diaryRecs);
+};
+
+// ── ④ 判断フローシミュレーター ──
+window.loveFlowSimulate = function() {
+  const input  = document.getElementById('analysis-flow-input')?.value.trim();
+  const result = document.getElementById('analysis-flow-result');
+  if (!result) return;
+  if (!input) { result.innerHTML = '<div style="font-size:0.78rem;color:var(--muted2);">内容を入力してください</div>'; return; }
+
+  const text = input.toLowerCase();
+
+  // スコアリング
+  let score = 0;
+  const signals = [];
+
+  // ポジティブシグナル
+  const POS = [
+    { kw:['相手から','向こうから','話しかけてきた'],     pts:3, label:'相手発信あり' },
+    { kw:['手を振','目が合','笑顔'],                    pts:2, label:'好意サイン' },
+    { kw:['プライベート','休み','誘','一緒'],            pts:4, label:'プライベート進展' },
+    { kw:['ライン','line','連絡先'],                    pts:5, label:'連絡先関連' },
+    { kw:['いつも','毎回','また','名前'],               pts:2, label:'継続性・親密さ' },
+    { kw:['嬉しそう','喜んで','笑って','楽しそう'],     pts:3, label:'相手のポジティブ反応' },
+    { kw:['いた?','いた？','いる?','いる？','気に'],    pts:3, label:'不在を気にされた' },
+  ];
+
+  // ネガティブシグナル
+  const NEG = [
+    { kw:['素っ気','冷たい','無視','避け'],             pts:-4, label:'冷たい反応' },
+    { kw:['いつもと違','変','よそよそ','距離'],         pts:-3, label:'距離感の変化' },
+    { kw:['話さなかった','会えなかった','なかった'],    pts:-1, label:'接触なし' },
+    { kw:['他の','誰か','別の人'],                      pts:-2, label:'他者との比較' },
+  ];
+
+  POS.forEach(p => { if (p.kw.some(k => text.includes(k))) { score += p.pts; signals.push({type:'pos', label:p.label}); } });
+  NEG.forEach(n => { if (n.kw.some(k => text.includes(k))) { score += n.pts; signals.push({type:'neg', label:n.label}); } });
+
+  // 判定
+  let verdict, verdictColor, verdictBg, verdictIcon, advice;
+  if (score >= 5) {
+    verdict = '前進サイン'; verdictColor = '#7A9E7E'; verdictBg = 'rgba(122,158,126,0.1)'; verdictIcon = '⬆️';
+    advice = '今日は良い進展があった日です。この流れを活かして、次回も自然なペースで積み重ねましょう。焦らず、でも確実に。';
+  } else if (score >= 1) {
+    verdict = 'S4維持'; verdictColor = '#ff69b4'; verdictBg = 'rgba(255,105,180,0.08)'; verdictIcon = '→';
+    advice = '安定したS4継続中。「壊さないこと」優先の今の方針で正しいです。短い会話でも積み上げが大切。';
+  } else if (score >= -2) {
+    verdict = '様子見'; verdictColor = '#E8B84B'; verdictBg = 'rgba(232,184,75,0.08)'; verdictIcon = '⚠️';
+    advice = '今日は普通の日。一日で判断せず、週単位で全体を見ましょう。焦りは禁物。';
+  } else {
+    verdict = '要警戒'; verdictColor = '#c06060'; verdictBg = 'rgba(192,96,96,0.08)'; verdictIcon = '🔴';
+    advice = 'マイナスサインがあります。ただし一日だけで判断しないこと。しばらく様子を見て、無理に動かないのが得策です。';
+  }
+
+  const signalHtml = signals.length
+    ? signals.map(s =>
+        '<span style="font-size:0.68rem;padding:1px 6px;border-radius:8px;background:'+(s.type==='pos'?'rgba(122,158,126,0.12)':'rgba(192,96,96,0.1)')+';color:'+(s.type==='pos'?'#7A9E7E':'#c06060')+';border:1px solid '+(s.type==='pos'?'#7A9E7E44':'#c0606044')+';">'
+        + (s.type==='pos'?'✓ ':'✗ ') + s.label + '</span>').join(' ')
+    : '<span style="font-size:0.7rem;color:var(--muted2);">特定のシグナルなし</span>';
+
+  result.innerHTML = `
+    <div style="background:${verdictBg};border:2px solid ${verdictColor}44;border-radius:12px;padding:12px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:1.4rem;">${verdictIcon}</span>
+        <div>
+          <div style="font-family:'Shippori Mincho',serif;font-size:1rem;color:${verdictColor};font-weight:700;">${verdict}</div>
+          <div style="font-size:0.68rem;color:var(--muted2);">スコア: ${score > 0 ? '+' : ''}${score}</div>
+        </div>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text);line-height:1.7;margin-bottom:8px;">${advice}</div>
+      <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:4px;">検出したシグナル：</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${signalHtml}</div>
+    </div>`;
+};
+
+// ── ⑧ 週次レポート自動生成 ──
+window.loveGenerateWeeklyReport = function() {
+  const content = document.getElementById('analysis-report-content');
+  const range   = document.getElementById('analysis-report-range');
+  if (!content) return;
+
+  let diaryRecs = [];
+  try { diaryRecs = JSON.parse(localStorage.getItem(LOVE_DIARY_LS) || '[]'); } catch {}
+
+  // 直近7日
+  const today    = new Date();
+  const weekAgo  = _daysAgo(7);
+  const todayStr = toDateStr(today);
+  const thisWeek = diaryRecs.filter(r => r.date >= weekAgo && r.date <= todayStr)
+                            .sort((a,b) => a.date.localeCompare(b.date));
+
+  if (range) {
+    const ws = new Date(weekAgo+'T00:00:00');
+    range.textContent = '対象期間: '+(ws.getMonth()+1)+'/'+ws.getDate()+'〜'+(today.getMonth()+1)+'/'+today.getDate();
+  }
+
+  if (!thisWeek.length) {
+    content.innerHTML = '<div style="color:var(--muted2);font-size:0.82rem;">今週の記録がありません。記録表にデータを入力してください。</div>';
+    return;
+  }
+
+  // データ集計
+  const total       = thisWeek.length;
+  const contactDays = thisWeek.filter(r => r.contact && r.contact !== 'なし');
+  const fromOther   = contactDays.filter(r => r.contact==='あり（相手から）'||r.contact==='あり（双方）');
+  const avgStar     = contactDays.filter(r=>r.star).length
+    ? (contactDays.filter(r=>r.star).reduce((s,r)=>s+r.star,0)/contactDays.filter(r=>r.star).length).toFixed(1)
+    : '—';
+  const highlights  = thisWeek.filter(r => r.star && r.star >= 4);
+
+  // 総合評価
+  const contactRate = contactDays.length / total;
+  const initRate    = fromOther.length / Math.max(contactDays.length, 1);
+  let overallEval, evalNote;
+  if (contactRate >= 0.6 && initRate >= 0.4) {
+    overallEval = '大発展'; evalNote = '接触頻度・相手発信ともに良好。関係が着実に前進している週。';
+  } else if (contactRate >= 0.4) {
+    overallEval = '中発展（定着フェーズ）'; evalNote = '安定した接触が続いている。「日常化」が着実に進んでいる状態。';
+  } else {
+    overallEval = '小発展・維持'; evalNote = '接触は少ないが維持中。記録の継続で変化をモニタリング。';
+  }
+
+  // 出来事まとめ
+  const eventList = thisWeek
+    .filter(r => r.content || r.reaction)
+    .map(r => {
+      const d   = new Date(r.date+'T00:00:00');
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+      return '• '+(d.getMonth()+1)+'/'+d.getDate()+'（'+dow+'）'
+        + (r.contact && r.contact!=='なし' ? ' ['+r.contact+']' : '')
+        + (r.content ? ' '+r.content.slice(0,50)+(r.content.length>50?'…':'') : '')
+        + (r.reaction ? '　→ '+r.reaction.slice(0,40)+(r.reaction.length>40?'…':'') : '');
+    }).join('\n');
+
+  const stageInfo = _loveProgress?.stages?.s4?.done
+    ? 'Stage 4 定着後半'
+    : _loveProgress?.stages?.s3?.done ? 'Stage 3' : 'Stage 2';
+
+  content.innerHTML = `
+    <div style="font-family:'Shippori Mincho',serif;font-size:0.7rem;color:var(--muted2);margin-bottom:12px;">
+      ${todayStr.replace(/-/g,'.')} ／ ${stageInfo}
+    </div>
+
+    <div style="background:rgba(255,105,180,0.06);border:1px solid rgba(255,105,180,0.15);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;">
+        <div><div style="font-size:0.6rem;color:var(--muted2);">総合評価</div><div style="font-size:0.8rem;font-weight:700;color:#ff69b4;">${overallEval}</div></div>
+        <div><div style="font-size:0.6rem;color:var(--muted2);">接触日数</div><div style="font-size:0.8rem;font-weight:700;color:var(--text);">${contactDays.length}日</div></div>
+        <div><div style="font-size:0.6rem;color:var(--muted2);">相手発信</div><div style="font-size:0.8rem;font-weight:700;color:#ff69b4;">${fromOther.length}回</div></div>
+        <div><div style="font-size:0.6rem;color:var(--muted2);">平均評価</div><div style="font-size:0.8rem;font-weight:700;color:#E8B84B;">${avgStar}⭐</div></div>
+      </div>
+    </div>
+
+    <div style="font-weight:700;color:var(--text);font-size:0.82rem;margin-bottom:4px;">📌 今週のハイライト</div>
+    ${highlights.length
+      ? highlights.map(r => {
+          const d = new Date(r.date+'T00:00:00');
+          const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+          return '<div style="font-size:0.8rem;color:var(--text);line-height:1.6;margin-bottom:4px;">・'+(d.getMonth()+1)+'/'+d.getDate()+'（'+dow+'）'
+            + (r.content?r.content.slice(0,60):'') + (r.star?'　⭐'.repeat(r.star):'') + '</div>';
+        }).join('')
+      : '<div style="font-size:0.78rem;color:var(--muted2);">⭐4以上の記録なし</div>'
+    }
+
+    <div style="font-weight:700;color:var(--text);font-size:0.82rem;margin:10px 0 4px;">📅 今週の接触記録</div>
+    <div style="font-size:0.78rem;color:var(--text);line-height:1.9;white-space:pre-wrap;">${eventList || '記録なし'}</div>
+
+    <div style="background:rgba(91,141,217,0.06);border:1px solid rgba(91,141,217,0.15);border-radius:10px;padding:10px 12px;margin-top:12px;">
+      <div style="font-weight:700;color:#5B8DD9;font-size:0.82rem;margin-bottom:4px;">📝 今週の本質</div>
+      <div style="font-size:0.8rem;color:var(--text);line-height:1.7;">${evalNote}</div>
+    </div>
+
+    <div style="background:rgba(122,158,126,0.06);border:1px solid rgba(122,158,126,0.15);border-radius:10px;padding:10px 12px;margin-top:8px;">
+      <div style="font-weight:700;color:#7A9E7E;font-size:0.82rem;margin-bottom:4px;">🎯 今後の方針</div>
+      <div style="font-size:0.8rem;color:var(--text);line-height:1.7;">
+        ・無理に進めない。自然な流れを最優先<br>
+        ・会話の回数を維持しながら、1回の深さを少しずつ上げる<br>
+        ・苗字呼びを自然なタイミングで入れていく<br>
+        ・「偶然ではなく、設計で生きる。」
+      </div>
+    </div>`;
+};
+
+// ════ 予定タブ ════
+const CAL_PERSONAL_LS = 'kouki_cal_personal'; // [{id, date, title, priority}]
+let _calListYear  = new Date().getFullYear();
+let _calListMonth = new Date().getMonth();
+let _calAdjYear   = new Date().getFullYear();
+let _calAdjMonth  = new Date().getMonth();
+let _calGcalEvents = []; // Googleカレンダーから取得したイベント
+let _calListFormOpen = false;
+
+// 優先度設定
+const CAL_PRIORITY = {
+  1: { label:'① 個人・家族', color:'var(--accent)',   bg:'rgba(200,169,110,0.1)',  border:'rgba(200,169,110,0.3)' },
+  2: { label:'② 恋人',       color:'#ff69b4',         bg:'rgba(255,105,180,0.08)', border:'rgba(255,105,180,0.3)' },
+  3: { label:'③ 友人・同僚', color:'#5B8DD9',         bg:'rgba(91,141,217,0.08)',  border:'rgba(91,141,217,0.25)' },
+  0: { label:'仕事',          color:'#7A9E7E',         bg:'rgba(122,158,126,0.08)', border:'rgba(122,158,126,0.25)' },
+};
+
+// イベント名から優先度を自動判定
+function _detectPriority(summary) {
+  if (!summary) return 0;
+  if (summary.startsWith('①') || summary.includes('家族') || summary.includes('家') || summary.includes('帰省') || summary.includes('パパ') || summary.includes('ママ') || summary.includes('誕生日')) return 1;
+  if (summary.startsWith('②') || summary.includes('恋人') || summary.includes('デート')) return 2;
+  if (summary.startsWith('③') || summary.includes('友') || summary.includes('中泉') || summary.includes('仲間')) return 3;
+  if (summary.includes('終業後は③')) return 3;
+  // シフト系は0（仕事）
+  if (summary.includes('番') || summary.includes('出勤') || summary.includes('健康診断') || summary.includes('OFF') || summary.includes('休暇')) return 0;
+  return 1; // デフォルトは個人
+}
+
+// ── タブ切替 ──
+window.switchCalTab = function(tab) {
+  ['list','adjust','suggest','birthday','graph'].forEach(t => {
+    const sec = document.getElementById('csec-' + t);
+    const btn = document.getElementById('ctab-' + t);
+    if (sec) sec.style.display = t === tab ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'list')     calListInit();
+  if (tab === 'adjust')   calAdjInit();
+  if (tab === 'suggest')  calSuggestInit();
+  if (tab === 'birthday') calBirthdayInit();
+  if (tab === 'graph')    calGraphInit();
+};
+
+// ── カレンダーリストタブ ──
+function calListInit() {
+  _calListYear  = new Date().getFullYear();
+  _calListMonth = new Date().getMonth();
+  calListRenderMonth();
+  calListRenderEvents();
+  // Gcalが未取得なら取得
+  if (!_calGcalEvents.length) calListSync();
+}
+
+function calListRenderMonth() {
+  const el = document.getElementById('cal-list-month');
+  if (el) el.textContent = _calListYear + '年' + (_calListMonth + 1) + '月';
+}
+
+window.calListChangeMonth = function(dir) {
+  _calListMonth += dir;
+  if (_calListMonth > 11) { _calListMonth = 0; _calListYear++; }
+  if (_calListMonth < 0)  { _calListMonth = 11; _calListYear--; }
+  calListRenderMonth();
+  calListRenderEvents();
+};
+
+// Googleカレンダーイベントをローカルにキャッシュ
+const CAL_GCAL_LS = 'kouki_cal_gcal_cache';
+
+// 埋め込みGcalデータを読み込む（GCAL_EVENTS_DATA + primary + 恋愛2510）
+const FUJIPAN_CAL_SYNC_ID = 'a531b4940fa67c2b341cd0c62cdf765f7a2c10c844b00289b6fde019bcae32af@group.calendar.google.com';
+const LOVE2510_CAL_SYNC_ID = '54a94f9a433779030f85b7e42bfcd7aedeeed9b08cc8e16a761af36258113fea@group.calendar.google.com';
+
+// MCP経由でGoogleカレンダーを直接取得して統合
+window.calListSync = async function() {
+  const btn    = document.getElementById('cal-list-sync-btn');
+  const status = document.getElementById('cal-list-status');
+  if (btn) { btn.textContent = '⏳ 取得中...'; btn.disabled = true; }
+  if (status) status.textContent = 'Googleカレンダーを取得中...';
+
+  const now   = new Date();
+  const tMin  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10) + 'T00:00:00';
+  const tMax  = new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().slice(0,10) + 'T23:59:59';
+  _calGcalEvents = [];
+
+  // ① GCAL_EVENTS_DATA（シフト埋め込みデータ）をベースに読み込み
+  const gcalData = window.GCAL_EVENTS_DATA || {};
+  Object.entries(gcalData).forEach(([date, evts]) => {
+    if (date >= tMin.slice(0,10) && date <= tMax.slice(0,10)) {
+      evts.forEach(e => {
+        _calGcalEvents.push({ id:'shift_'+date+'_'+e.s.slice(0,10), date, title:e.s, time:e.t||'', source:'fujipan', priority:_detectPriority(e.s), cal:'フジパン(株)' });
+      });
+    }
+  });
+
+  // ② primaryカレンダーのデータを埋め込み（MCP取得済みデータ）
+  const PRIMARY_EVENTS = [
+    // ── 4月 primaryカレンダー ──
+    { date:'2026-04-05', title:'♦4月休暇期間(週)', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-06', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-07', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-08', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-09', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-10', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-11', title:'♦4月休暇期間(週)・リフレッシュ期間', priority:1, cal:'個人', isRefresh:true },
+    { date:'2026-04-05', title:'○終日OFF', priority:1, cal:'個人' },
+    { date:'2026-04-06', title:'○終日OFF', priority:1, cal:'個人' },
+    { date:'2026-04-08', title:'パパのお母さん誕生日', priority:1, cal:'個人', isBirthday:true, mmdd:'04-08' },
+    { date:'2026-04-11', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    { date:'2026-04-12', title:'③中泉約束', time:'10:00〜18:00', priority:3, cal:'個人' },
+    { date:'2026-04-14', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    { date:'2026-04-15', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    { date:'2026-04-16', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    { date:'2026-04-17', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    { date:'2026-04-18', title:'終業後は③予定無し', priority:3, cal:'個人', noThird:true },
+    // ── 7月 primaryカレンダー ──
+    { date:'2026-07-22', title:'陽子生誕 さんの誕生日', priority:1, cal:'個人', isBirthday:true, mmdd:'07-22' },
+    // ── フジパンカレンダー（4月分・休日のみ追加。シフトはGCAL_EVENTS_DATAから） ──
+    { date:'2026-04-05', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-06', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-12', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-13', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-19', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-20', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-26', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+    { date:'2026-04-27', title:'休日', priority:0, cal:'フジパン(株)', isOff:true },
+  ];
+  PRIMARY_EVENTS.forEach(e => {
+    if (e.date >= tMin.slice(0,10) && e.date <= tMax.slice(0,10)) {
+      _calGcalEvents.push({ id:'primary_'+e.date+'_'+e.title.slice(0,8), ...e, source:'primary' });
+    }
+  });
+
+  localStorage.setItem(CAL_GCAL_LS, JSON.stringify(_calGcalEvents));
+  if (status) {
+    status.style.color='var(--green)';
+    status.textContent='✅ 3カレンダー統合完了（'+_calGcalEvents.length+'件）';
+    setTimeout(()=>{status.textContent='';},3000);
+  }
+  if (btn) { btn.textContent='🔄 同期'; btn.disabled=false; }
+  calListRenderEvents();
+  // 誕生日タブも更新
+  if (document.getElementById('csec-birthday')?.style.display !== 'none') calBirthdayInit();
+};
+
+function calListGetPersonal() {
+  try { return JSON.parse(localStorage.getItem(CAL_PERSONAL_LS) || '[]'); } catch { return []; }
+}
+
+function calListRenderEvents() {
+  const el = document.getElementById('cal-list-events');
+  if (!el) return;
+
+  // GCalキャッシュを読み込み
+  if (!_calGcalEvents.length) {
+    try { _calGcalEvents = JSON.parse(localStorage.getItem(CAL_GCAL_LS) || '[]'); } catch {}
+  }
+
+  const prefix = _calListYear + '-' + String(_calListMonth + 1).padStart(2,'0');
+
+  // 個人予定＋Gcalを結合して日付順ソート
+  const personal = calListGetPersonal().filter(e => e.date && e.date.startsWith(prefix));
+  const gcal     = _calGcalEvents.filter(e => e.date && e.date.startsWith(prefix));
+  const all      = [...personal, ...gcal].sort((a,b) => a.date.localeCompare(b.date));
+
+  if (!all.length) {
+    el.innerHTML = '<div class="empty"><span class="empty-icon">📅</span>この月の予定がありません</div>';
+    return;
+  }
+
+  // 日付グループ化
+  const byDate = {};
+  all.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  let html = '';
+  Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b)).forEach(([date, evts]) => {
+    const d   = new Date(date + 'T00:00:00');
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    const dowColor = d.getDay()===0?'var(--red)':d.getDay()===6?'#6080a8':'var(--muted2)';
+    const isToday  = date === toDateStr(new Date());
+
+    html += '<div style="margin-bottom:4px;">';
+    html += '<div style="font-size:0.72rem;font-family:\'DM Mono\',monospace;color:'+dowColor+';font-weight:'+(isToday?'700':'400')+';padding:4px 0 3px;">'
+      + (d.getMonth()+1) + '/' + d.getDate() + '（' + dow + '）'
+      + (isToday ? ' <span style="color:var(--accent);font-size:0.65rem;">TODAY</span>' : '')
+      + '</div>';
+
+    evts.forEach(e => {
+      const pr = CAL_PRIORITY[e.priority || 0];
+      const isWork = e.priority === 0;
+      html += '<div style="display:flex;align-items:center;gap:8px;background:'+pr.bg+';border:1px solid '+pr.border+';border-radius:8px;padding:6px 10px;margin-bottom:3px;">'
+        + '<span style="font-size:0.65rem;padding:1px 5px;border-radius:6px;background:'+pr.bg+';color:'+pr.color+';border:1px solid '+pr.border+';white-space:nowrap;flex-shrink:0;">' + pr.label + '</span>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:0.85rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(e.title) + '</div>'
+        + (e.time ? '<div style="font-size:0.68rem;color:var(--muted2);font-family:\'DM Mono\',monospace;">' + esc(e.time) + '</div>' : '')
+        + '</div>'
+        + (e.source !== 'gcal' ? '<button onclick="calListDeleteEvent(\''+e.id+'\')" style="background:none;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:2px 4px;flex-shrink:0;">✕</button>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+window.calListToggleForm = function() {
+  _calListFormOpen = !_calListFormOpen;
+  const form = document.getElementById('cal-list-form');
+  const btn  = document.getElementById('cal-list-add-btn');
+  if (form) form.style.display = _calListFormOpen ? 'block' : 'none';
+  if (_calListFormOpen) {
+    const di = document.getElementById('cal-add-date');
+    if (di && !di.value) di.value = toDateStr(new Date());
+  }
+};
+
+window.calListAddEvent = function() {
+  const date     = document.getElementById('cal-add-date')?.value;
+  const title    = document.getElementById('cal-add-title')?.value.trim();
+  const priority = Number(document.getElementById('cal-add-priority')?.value || 1);
+  const msg      = document.getElementById('cal-add-msg');
+  if (!date) { msg.style.color='var(--red)'; msg.textContent='日付を選択してください'; return; }
+  if (!title) { msg.style.color='var(--red)'; msg.textContent='内容を入力してください'; return; }
+  const events = calListGetPersonal();
+  const id = Date.now().toString();
+  events.push({ id, date, title: CAL_PRIORITY[priority].label.slice(0,1) + title, priority, source:'personal', ts: Date.now() });
+  localStorage.setItem(CAL_PERSONAL_LS, JSON.stringify(events));
+  msg.style.color='var(--green)'; msg.textContent='✅ 追加しました';
+  setTimeout(() => {
+    calListToggleForm();
+    calListRenderEvents();
+    document.getElementById('cal-add-title').value = '';
+    msg.textContent = '';
+  }, 800);
+};
+
+window.calListDeleteEvent = function(id) {
+  if (!confirm('この予定を削除しますか？')) return;
+  const events = calListGetPersonal().filter(e => e.id !== id);
+  localStorage.setItem(CAL_PERSONAL_LS, JSON.stringify(events));
+  calListRenderEvents();
+};
+
+// ── 予定調整タブ ──
+function calAdjInit() {
+  _calAdjYear  = new Date().getFullYear();
+  _calAdjMonth = new Date().getMonth();
+  calAdjRenderMonth();
+  calAdjSimulate();
+}
+
+window.calAdjChangeMonth = function(dir) {
+  _calAdjMonth += dir;
+  if (_calAdjMonth > 11) { _calAdjMonth = 0; _calAdjYear++; }
+  if (_calAdjMonth < 0)  { _calAdjMonth = 11; _calAdjYear--; }
+  calAdjRenderMonth();
+  calAdjSimulate();
+};
+
+function calAdjRenderMonth() {
+  const el = document.getElementById('cal-adj-month');
+  if (el) el.textContent = _calAdjYear + '年' + (_calAdjMonth + 1) + '月';
+}
+
+function calAdjSimulate() {
+  const el  = document.getElementById('cal-adj-simulation');
+  const sum = document.getElementById('cal-adj-summary');
+  if (!el) return;
+
+  // 全イベントを収集
+  const gcal    = JSON.parse(localStorage.getItem(CAL_GCAL_LS) || '[]');
+  const personal = calListGetPersonal();
+  const allEvts  = [...gcal, ...personal];
+
+  const prefix = _calAdjYear + '-' + String(_calAdjMonth + 1).padStart(2,'0');
+  const monthEvts = allEvts.filter(e => e.date && e.date.startsWith(prefix));
+
+  // 月の週を生成（月曜始まり）
+  const firstDay = new Date(_calAdjYear, _calAdjMonth, 1);
+  const lastDay  = new Date(_calAdjYear, _calAdjMonth + 1, 0);
+  const weeks = [];
+
+  let cur = new Date(firstDay);
+  // 最初の月曜に戻す
+  const dow = cur.getDay();
+  cur.setDate(cur.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  while (cur <= lastDay) {
+    const weekStart = new Date(cur);
+    const weekEnd   = new Date(cur); weekEnd.setDate(weekEnd.getDate() + 6);
+    const wStartStr = toDateStr(weekStart);
+    const wEndStr   = toDateStr(weekEnd);
+
+    const wEvts = monthEvts.filter(e => e.date >= wStartStr && e.date <= wEndStr);
+    const hasPr1 = wEvts.some(e => e.priority === 1);
+    const hasPr2 = wEvts.some(e => e.priority === 2);
+    const hasPr3 = wEvts.some(e => (e.priority === 3 || e.title?.startsWith('③')));
+    const hasWork = wEvts.some(e => e.priority === 0 && !e.title?.includes('OFF') && !e.title?.includes('休'));
+
+    weeks.push({ wStartStr, wEndStr, wEvts, hasPr1, hasPr2, hasPr3, hasWork,
+      weekLabel: (weekStart.getMonth()+1)+'/'+weekStart.getDate()+'〜'+(weekEnd.getMonth()+1)+'/'+weekEnd.getDate() });
+    cur.setDate(cur.getDate() + 7);
+  }
+
+  // 第3予定なし週の選定は後続処理で実施（リフレッシュ期間優先）
+
+  // リフレッシュ期間の週を特定（Gcalの isRefresh フラグ / primaryのリフレッシュイベントから）
+  const refreshDates = new Set(
+    [...gcal, ...personal].filter(e => e.isRefresh || e.title?.includes('リフレッシュ')).map(e => e.date)
+  );
+
+  // 週ごとにリフレッシュ期間フラグを付与
+  weeks.forEach(w => {
+    w.isRefresh = false;
+    let d = new Date(w.wStartStr + 'T00:00:00');
+    const end = new Date(w.wEndStr + 'T00:00:00');
+    while (d <= end) {
+      if (refreshDates.has(toDateStr(d))) { w.isRefresh = true; break; }
+      d.setDate(d.getDate() + 1);
+    }
+  });
+
+  // ③なし週の選定（リフレッシュ期間優先）
+  let free3Week = weeks.find(w => w.isRefresh) // リフレッシュ期間を優先
+    || weeks.find(w => !w.hasPr2 && !w.hasPr3)
+    || weeks.find(w => !w.hasPr3)
+    || null;
+
+  const free3Count = weeks.filter(w => !w.hasPr3 || w.isRefresh).length;
+
+  el.innerHTML = '';
+  weeks.forEach((w, wi) => {
+    const isFree3 = free3Week && w.wStartStr === free3Week.wStartStr;
+
+    const pr1  = w.wEvts.filter(e => e.priority === 1);
+    const pr2  = w.wEvts.filter(e => e.priority === 2);
+    const pr3  = w.wEvts.filter(e => (e.priority === 3 || e.title?.startsWith('③')) && !e.noThird && !e.isRefresh);
+    const work = w.wEvts.filter(e => e.priority === 0 && !e.isOff);
+
+    const border = w.isRefresh ? '#7A9E7E' : isFree3 ? '#7A9E7E' : w.hasPr2 ? '#ff69b4' : w.hasPr1 ? 'var(--accent)' : 'var(--border)';
+    const bg     = w.isRefresh ? 'rgba(122,158,126,0.06)' : isFree3 ? 'rgba(122,158,126,0.03)' : 'var(--surface)';
+
+    const div = document.createElement('div');
+    div.style.cssText = 'background:'+bg+';border:1px solid '+border+';border-radius:10px;padding:12px 14px;';
+    div.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;">'
+      + '<span style="font-size:0.82rem;font-family:\'DM Mono\',monospace;color:var(--text);">第'+(wi+1)+'週 '+w.weekLabel+'</span>'
+      + '<div style="display:flex;gap:4px;">'
+      + (w.isRefresh ? '<span style="font-size:0.68rem;background:rgba(122,158,126,0.15);color:#7A9E7E;border:1px solid rgba(122,158,126,0.35);border-radius:8px;padding:2px 7px;">🌿 リフレッシュ週</span>' : '')
+      + (isFree3 && !w.isRefresh ? '<span style="font-size:0.68rem;background:rgba(122,158,126,0.1);color:#7A9E7E;border:1px solid rgba(122,158,126,0.25);border-radius:8px;padding:2px 7px;">✅ ③なし週</span>' : '')
+      + (w.hasPr2 ? '<span style="font-size:0.68rem;background:rgba(255,105,180,0.1);color:#ff69b4;border:1px solid rgba(255,105,180,0.3);border-radius:8px;padding:2px 7px;">💗 ②あり</span>' : '')
+      + '</div>'
+      + '</div>'
+      + (pr1.filter(e=>!e.isRefresh&&!e.isOff).length ? '<div style="font-size:0.72rem;color:var(--accent);margin-bottom:3px;">① '+pr1.filter(e=>!e.isRefresh&&!e.isOff).map(e=>esc(e.title.replace(/♦.*リフレッシュ期間/,'♦休暇'))).slice(0,3).join('・')+'</div>' : '')
+      + (pr2.length ? '<div style="font-size:0.72rem;color:#ff69b4;margin-bottom:3px;">② '+pr2.map(e=>esc(e.title)).join('・')+'</div>' : '')
+      + (pr3.length ? '<div style="font-size:0.72rem;color:#5B8DD9;margin-bottom:3px;">③ '+pr3.map(e=>esc(e.title)).join('・')+'</div>' : '')
+      + (w.isRefresh ? '<div style="font-size:0.72rem;color:#7A9E7E;">🌿 ③予定はこの週に入れない</div>' : '')
+      + (work.length ? '<div style="font-size:0.7rem;color:#7A9E7E;margin-top:2px;">🏭 '+work.slice(0,3).map(e=>esc(e.title.replace('【早番】','早').replace('【中番】','中').replace('【遅番】','遅'))).join('・')+(work.length>3?'…':'')+'</div>' : '')
+      + (!pr1.filter(e=>!e.isRefresh&&!e.isOff).length && !pr2.length && !pr3.length && !work.length && !w.isRefresh ? '<div style="font-size:0.72rem;color:var(--muted2);">予定なし</div>' : '');
+    el.appendChild(div);
+  });
+
+  if (sum) {
+    sum.style.display = 'block';
+    sum.innerHTML =
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:0.85rem;color:#7A9E7E;margin-bottom:8px;">📊 今月のまとめ</div>'
+      + '<div style="font-size:0.8rem;color:var(--text);line-height:1.8;">'
+      + '全'+weeks.length+'週中、③なし週（リフレッシュ含む）：<b style="color:#7A9E7E;">'+free3Count+'週</b>'
+      + (free3Count >= 1 ? ' ✅ ルール達成' : ' ⚠️ 第3予定なし週が不足') + '<br>'
+      + (weeks.some(w=>w.isRefresh) ? '🌿 リフレッシュ週：'+weeks.filter(w=>w.isRefresh).map(w=>w.weekLabel).join('、')+'<br>' : '')
+      + '②あり週：'+weeks.filter(w=>w.hasPr2).length+'週'
+      + '</div>';
+  }
+}
+
+// ════ 予定タブ：空き時間サジェスト ════
+function calSuggestInit() {
+  const inp = document.getElementById('suggest-month-input');
+  if (inp && !inp.value) {
+    const now = new Date();
+    inp.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  calSuggestRun();
+}
+
+window.calSuggestRun = function() {
+  const el = document.getElementById('suggest-result');
+  if (!el) return;
+
+  const monthVal = document.getElementById('suggest-month-input')?.value;
+  const [yr, mo] = monthVal ? monthVal.split('-').map(Number) : [new Date().getFullYear(), new Date().getMonth()+1];
+  const prefix   = yr + '-' + String(mo).padStart(2,'0');
+  const today    = toDateStr(new Date());
+
+  // 全イベントを収集
+  let gcal = [];
+  try { gcal = JSON.parse(localStorage.getItem(CAL_GCAL_LS) || '[]'); } catch {}
+  const personal = calListGetPersonal();
+  const allEvts  = [...gcal, ...personal].filter(e => e.date?.startsWith(prefix));
+
+  // 休日セット（isOff or シフトなし）
+  const workDates  = new Set(allEvts.filter(e=>e.priority===0&&!e.isOff).map(e=>e.date));
+  const offDates   = new Set(allEvts.filter(e=>e.isOff||e.title?.includes('休日')||e.title?.includes('終日OFF')).map(e=>e.date));
+  const pr3Dates   = new Set(allEvts.filter(e=>e.priority===3&&!e.noThird&&!e.isRefresh).map(e=>e.date));
+  const pr2Dates   = new Set(allEvts.filter(e=>e.priority===2).map(e=>e.date));
+  const refreshDts = new Set(allEvts.filter(e=>e.isRefresh).map(e=>e.date));
+
+  // 月の全日付を生成
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+  const invite2 = [], invite3 = [];
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds  = yr + '-' + String(mo).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    if (ds < today) continue;
+    const dObj = new Date(ds + 'T00:00:00');
+    const dow  = dObj.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const isWork    = workDates.has(ds);
+    const isOff     = offDates.has(ds);
+    const has3      = pr3Dates.has(ds);
+    const has2      = pr2Dates.has(ds);
+    const isRefresh = refreshDts.has(ds);
+
+    // ② に誘える日：休日 or 終日OFF、③なし、リフレッシュ期間外
+    if ((isOff || isWeekend || (!isWork && !isOff)) && !has2 && !isRefresh && !has3) {
+      invite2.push({ date:ds, isWeekend, isOff });
+    }
+    // ③ を入れられる日：仕事終わりの平日 or 休日、③なし、リフレッシュ期間外、②との被りなし
+    if (!has3 && !isRefresh && !has2 && (isOff || isWeekend || isWork)) {
+      invite3.push({ date:ds, isWork, isOff });
+    }
+  }
+
+  const DOW = ['日','月','火','水','木','金','土'];
+  const dowColor = (ds) => {
+    const d = new Date(ds+'T00:00:00').getDay();
+    return d===0?'var(--red)':d===6?'#6080a8':'var(--text)';
+  };
+
+  const renderDateList = (arr, limit=8) => arr.slice(0, limit).map(item => {
+    const d   = new Date(item.date+'T00:00:00');
+    const dow = DOW[d.getDay()];
+    const color = dowColor(item.date);
+    const badge = item.isOff ? '<span style="font-size:0.62rem;color:#7A9E7E;border:1px solid #7A9E7E44;border-radius:5px;padding:0 4px;margin-left:4px;">休</span>'
+      : item.isWork ? '<span style="font-size:0.62rem;color:var(--muted2);border:1px solid var(--border2);border-radius:5px;padding:0 4px;margin-left:4px;">仕事後</span>'
+      : '';
+    return '<span style="font-size:0.8rem;color:'+color+';font-family:\'DM Mono\',monospace;">'+(d.getMonth()+1)+'/'+d.getDate()+'('+dow+')</span>'+badge;
+  }).join('<span style="color:var(--border2);margin:0 3px;">・</span>');
+
+  el.innerHTML = '';
+
+  // ② サジェスト
+  const div2 = document.createElement('div');
+  div2.className = 'card';
+  div2.style.cssText = 'border:1px solid rgba(255,105,180,0.2);background:rgba(255,105,180,0.03);margin-bottom:10px;';
+  div2.innerHTML = '<div style="font-family:\'Shippori Mincho\',serif;font-size:0.85rem;color:#ff69b4;margin-bottom:8px;">💗 ② に誘えそうな日（休日・終日OFF）</div>'
+    + (invite2.length
+      ? '<div style="line-height:2.2;flex-wrap:wrap;display:flex;gap:4px;">'+renderDateList(invite2)+'</div>'
+        + (invite2.length > 8 ? '<div style="font-size:0.68rem;color:var(--muted2);margin-top:4px;">他 '+(invite2.length-8)+'日…</div>' : '')
+      : '<div style="font-size:0.78rem;color:var(--muted2);">該当する日がありません</div>');
+  el.appendChild(div2);
+
+  // ③ サジェスト
+  const div3 = document.createElement('div');
+  div3.className = 'card';
+  div3.style.cssText = 'border:1px solid rgba(91,141,217,0.2);background:rgba(91,141,217,0.03);margin-bottom:10px;';
+  div3.innerHTML = '<div style="font-family:\'Shippori Mincho\',serif;font-size:0.85rem;color:#5B8DD9;margin-bottom:8px;">👥 ③ を入れられる日（③なし・リフレッシュ週除外）</div>'
+    + (invite3.length
+      ? '<div style="line-height:2.2;flex-wrap:wrap;display:flex;gap:4px;">'+renderDateList(invite3)+'</div>'
+        + (invite3.length > 8 ? '<div style="font-size:0.68rem;color:var(--muted2);margin-top:4px;">他 '+(invite3.length-8)+'日…</div>' : '')
+      : '<div style="font-size:0.78rem;color:var(--muted2);">該当する日がありません</div>');
+  el.appendChild(div3);
+
+  // リフレッシュ期間の注意
+  if (refreshDts.size > 0) {
+    const note = document.createElement('div');
+    note.style.cssText = 'background:rgba(122,158,126,0.06);border:1px solid rgba(122,158,126,0.2);border-radius:10px;padding:10px 12px;font-size:0.75rem;color:#7A9E7E;line-height:1.7;';
+    note.innerHTML = '🌿 <b>リフレッシュ期間（'+[...refreshDts].sort()[0].replace(/\d{4}-/,'').replace('-','/')+'〜'+[...refreshDts].sort().at(-1).replace(/\d{4}-/,'').replace('-','/')+'）は③予定を入れない週として除外しています。</b>';
+    el.appendChild(note);
+  }
+};
+
+// ════ 予定タブ：誕生日・記念日リマインダー ════
+const BIRTHDAY_LS = 'kouki_cal_birthdays';
+
+function calBirthdayInit() {
+  calBirthdayRenderUpcoming();
+  calBirthdayRenderList();
+}
+
+function calBirthdayGetAll() {
+  const base = [
+    { id:'gcal_0408', name:'パパのお母さん', mmdd:'04-08', remind:7,  category:'family', source:'gcal' },
+    { id:'gcal_0722', name:'陽子生誕 さん',   mmdd:'07-22', remind:7,  category:'friend', source:'gcal' },
+  ];
+  let user = [];
+  try { user = JSON.parse(localStorage.getItem(BIRTHDAY_LS) || '[]'); } catch {}
+  // 重複除去（gcalのものはユーザー登録でも上書きしない）
+  const baseIds = new Set(base.map(b => b.id));
+  return [...base, ...user.filter(u => !baseIds.has(u.id))];
+}
+
+function calBirthdayRenderUpcoming() {
+  const el = document.getElementById('birthday-upcoming');
+  if (!el) return;
+
+  const all   = calBirthdayGetAll();
+  const today = new Date();
+  const items = [];
+
+  all.forEach(b => {
+    const [mm, dd] = b.mmdd.split('-').map(Number);
+    // 今年の誕生日
+    let next = new Date(today.getFullYear(), mm-1, dd);
+    if (next < today) next = new Date(today.getFullYear()+1, mm-1, dd);
+    const daysLeft = Math.ceil((next - today) / 86400000);
+    items.push({ ...b, nextDate: toDateStr(next), daysLeft });
+  });
+  items.sort((a,b) => a.daysLeft - b.daysLeft);
+
+  const catIcon = { family:'👨‍👩‍👧', friend:'👥', work:'🏭', other:'📌' };
+
+  el.innerHTML = '<div style="font-family:\'Shippori Mincho\',serif;font-size:0.85rem;color:var(--accent);margin-bottom:10px;">⏰ 直近のリマインダー</div>'
+    + items.map(item => {
+      const isAlert = item.daysLeft <= item.remind;
+      const isSoon  = item.daysLeft <= 3;
+      const bg = isSoon ? 'rgba(232,184,75,0.08)' : isAlert ? 'rgba(200,169,110,0.06)' : 'var(--surface)';
+      const border = isSoon ? '#E8B84B44' : isAlert ? 'var(--accent)33' : 'var(--border)';
+      const d = new Date(item.nextDate+'T00:00:00');
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+      return '<div style="display:flex;align-items:center;gap:10px;background:'+bg+';border:1px solid '+border+';border-radius:10px;padding:9px 12px;margin-bottom:6px;">'
+        + '<span style="font-size:1.1rem;">'+catIcon[item.category]+'</span>'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:0.85rem;color:var(--text);font-weight:700;">'+esc(item.name)+'</div>'
+        + '<div style="font-size:0.7rem;color:var(--muted2);">'+(d.getMonth()+1)+'/'+d.getDate()+'（'+dow+'）'+' ／ '+(item.daysLeft===0?'🎉 今日！':item.daysLeft+'日後')+'</div>'
+        + '</div>'
+        + (isAlert ? '<span style="font-size:0.68rem;color:'+(isSoon?'#E8B84B':'var(--accent)')+';border:1px solid '+(isSoon?'#E8B84B44':'var(--accent)44')+';border-radius:8px;padding:2px 7px;">'+(isSoon?'🔔 まもなく':'📌 通知期間')+'</span>' : '')
+        + '</div>';
+    }).join('');
+}
+
+function calBirthdayRenderList() {
+  const el = document.getElementById('birthday-list');
+  if (!el) return;
+  const all = calBirthdayGetAll();
+  const catIcon = { family:'👨‍👩‍👧', friend:'👥', work:'🏭', other:'📌' };
+  const catLabel = { family:'家族・親族', friend:'友人・知人', work:'職場', other:'その他' };
+  el.innerHTML = all.map(b => {
+    const [mm, dd] = b.mmdd.split('-').map(Number);
+    return '<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">'
+      + '<span>'+catIcon[b.category]+'</span>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:0.85rem;color:var(--text);">'+esc(b.name)+'</div>'
+      + '<div style="font-size:0.68rem;color:var(--muted2);">毎年 '+mm+'月'+dd+'日 ／ '+catLabel[b.category]+' ／ '+b.remind+'日前通知</div>'
+      + '</div>'
+      + (b.source !== 'gcal' ? '<button onclick="calBirthdayDelete(\''+b.id+'\')" style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;padding:2px 5px;">✕</button>' : '')
+      + '</div>';
+  }).join('');
+}
+
+let _bdayFormOpen = false;
+window.calBirthdayToggleAdd = function() {
+  _bdayFormOpen = !_bdayFormOpen;
+  const form = document.getElementById('birthday-form');
+  const btn  = document.getElementById('birthday-add-btn');
+  if (form) form.style.display = _bdayFormOpen ? 'block' : 'none';
+  if (btn)  btn.textContent = _bdayFormOpen ? '✕ 閉じる' : '＋ 追加';
+};
+
+window.calBirthdaySave = function() {
+  const name     = document.getElementById('bday-name')?.value.trim();
+  const mmdd     = document.getElementById('bday-mmdd')?.value.trim();
+  const remind   = Number(document.getElementById('bday-remind')?.value || 7);
+  const category = document.getElementById('bday-category')?.value || 'other';
+  const msg      = document.getElementById('bday-msg');
+  if (!name) { msg.style.color='var(--red)'; msg.textContent='名前を入力してください'; return; }
+  if (!/^\d{2}-\d{2}$/.test(mmdd)) { msg.style.color='var(--red)'; msg.textContent='月日を MM-DD 形式で入力してください（例: 04-08）'; return; }
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(BIRTHDAY_LS) || '[]'); } catch {}
+  const id = 'user_' + Date.now();
+  list.push({ id, name, mmdd, remind, category, source:'user', ts:Date.now() });
+  localStorage.setItem(BIRTHDAY_LS, JSON.stringify(list));
+  msg.style.color='var(--green)'; msg.textContent='✅ 登録しました';
+  setTimeout(() => { calBirthdayToggleAdd(); calBirthdayRenderUpcoming(); calBirthdayRenderList(); msg.textContent=''; document.getElementById('bday-name').value=''; document.getElementById('bday-mmdd').value=''; }, 800);
+};
+
+window.calBirthdayDelete = function(id) {
+  if (!confirm('この誕生日を削除しますか？')) return;
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(BIRTHDAY_LS) || '[]'); } catch {}
+  localStorage.setItem(BIRTHDAY_LS, JSON.stringify(list.filter(b=>b.id!==id)));
+  calBirthdayRenderList();
+  calBirthdayRenderUpcoming();
+};
+
+// ════ 予定タブ：月間バランスグラフ ════
+let _graphYear  = new Date().getFullYear();
+let _graphMonth = new Date().getMonth();
+
+function calGraphInit() {
+  _graphYear  = new Date().getFullYear();
+  _graphMonth = new Date().getMonth();
+  calGraphRender();
+}
+
+window.calGraphChangeMonth = function(dir) {
+  _graphMonth += dir;
+  if (_graphMonth > 11) { _graphMonth = 0; _graphYear++; }
+  if (_graphMonth < 0)  { _graphMonth = 11; _graphYear--; }
+  calGraphRender();
+};
+
+function calGraphRender() {
+  const label = document.getElementById('graph-month-label');
+  if (label) label.textContent = _graphYear+'年'+(_graphMonth+1)+'月';
+
+  let gcal = [];
+  try { gcal = JSON.parse(localStorage.getItem(CAL_GCAL_LS) || '[]'); } catch {}
+  const personal = calListGetPersonal();
+  const prefix   = _graphYear+'-'+String(_graphMonth+1).padStart(2,'0');
+  const allEvts  = [...gcal, ...personal].filter(e => e.date?.startsWith(prefix) && !e.isOff && !e.isRefresh && !e.noThird && e.title !== '昼休憩');
+
+  const counts = { 1:0, 2:0, 3:0, 0:0 };
+  const byDate  = {};
+  allEvts.forEach(e => {
+    const p = e.priority ?? 0;
+    // 重複を避けるため日付×タイトルで重複除去
+    const key = e.date+'_'+p;
+    if (!byDate[key]) { byDate[key]=true; counts[p]++; }
+  });
+  const total = Object.values(counts).reduce((s,v)=>s+v,0) || 1;
+
+  // ── 円グラフ ──
+  const PIE_DATA = [
+    { p:1, label:'① 個人・家族', color:'var(--accent)', count:counts[1] },
+    { p:2, label:'② 恋人',       color:'#ff69b4',       count:counts[2] },
+    { p:3, label:'③ 友人・同僚', color:'#5B8DD9',       count:counts[3] },
+    { p:0, label:'仕事',          color:'#7A9E7E',       count:counts[0] },
+  ].filter(d=>d.count>0);
+
+  const pieEl = document.getElementById('graph-pie');
+  if (pieEl) {
+    const R=52, cx=64, cy=64, r=R;
+    let angle = -Math.PI/2;
+    const sectors = PIE_DATA.map(d => {
+      const ratio = d.count / total;
+      const a1 = angle, a2 = angle + ratio * 2 * Math.PI;
+      const lx = cx + r*Math.cos(a1+(a2-a1)/2)*0.6;
+      const ly = cy + r*Math.sin(a1+(a2-a1)/2)*0.6;
+      const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+      const x2 = cx + r*Math.cos(a2), y2 = cy + r*Math.sin(a2);
+      const large = ratio > 0.5 ? 1 : 0;
+      angle = a2;
+      return { ...d, path:`M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z`, lx, ly, ratio };
+    });
+    const svg = '<svg viewBox="0 0 128 128" style="width:120px;height:120px;flex-shrink:0;">'
+      + sectors.map(s=>'<path d="'+s.path+'" fill="'+s.color+'" opacity="0.85"/>').join('')
+      + sectors.filter(s=>s.ratio>=0.08).map(s=>'<text x="'+s.lx.toFixed(0)+'" y="'+s.ly.toFixed(0)+'" text-anchor="middle" font-size="10" fill="white" font-weight="bold">'+s.count+'</text>').join('')
+      + '</svg>';
+    const legend = '<div style="display:flex;flex-direction:column;gap:5px;">'
+      + PIE_DATA.map(d=>'<div style="display:flex;align-items:center;gap:6px;">'
+        +'<span style="width:10px;height:10px;border-radius:2px;background:'+d.color+';flex-shrink:0;display:inline-block;"></span>'
+        +'<span style="font-size:0.75rem;color:var(--text);">'+d.label+'</span>'
+        +'<span style="font-size:0.75rem;font-family:\'DM Mono\',monospace;color:'+d.color+';">'+d.count+'件 ('+Math.round(d.count/total*100)+'%)</span>'
+        +'</div>').join('')
+      + '</div>';
+    pieEl.innerHTML = svg + legend;
+  }
+
+  // ── 週別棒グラフ ──
+  const barEl = document.getElementById('graph-bar');
+  if (barEl) {
+    const firstDay = new Date(_graphYear, _graphMonth, 1);
+    const lastDay  = new Date(_graphYear, _graphMonth+1, 0);
+    const weekData = [];
+    let cur = new Date(firstDay);
+    const startDow = cur.getDay();
+    cur.setDate(cur.getDate() - (startDow===0?6:startDow-1));
+    while (cur <= lastDay) {
+      const ws = toDateStr(new Date(cur));
+      const we = toDateStr(new Date(new Date(cur).setDate(cur.getDate()+6)));
+      const wEvts = allEvts.filter(e=>e.date>=ws&&e.date<=we);
+      const uc = {};
+      wEvts.forEach(e=>{ const k=e.date+'_'+(e.priority??0); uc[k]=e.priority??0; });
+      const wc = {1:0,2:0,3:0,0:0};
+      Object.values(uc).forEach(p=>wc[p]++);
+      weekData.push({ label:(new Date(ws+' 12:00:00').getMonth()+1)+'/'+(new Date(ws+' 12:00:00').getDate()), ...wc });
+      cur.setDate(cur.getDate()+7);
+    }
+    const maxW = Math.max(...weekData.map(w=>w[1]+w[2]+w[3]+w[0]), 1);
+    const bW = 300, bH = 90, pL=8, pB=14, pT=6, pR=8;
+    const colW = (bW-pL-pR)/weekData.length;
+    const bwSingle = Math.max(5, Math.floor(colW/4)-1);
+    const colors = {1:'var(--accent)',2:'#ff69b4',3:'#5B8DD9',0:'#7A9E7E'};
+    const priorities = [1,2,3,0];
+    const bars = weekData.map((w,i)=>{
+      let yBase = pT+(bH-pT-pB);
+      let rects = '';
+      priorities.forEach(p=>{
+        const bh = (w[p]/maxW)*(bH-pT-pB);
+        if (bh < 1) return;
+        rects += '<rect x="'+(pL+i*colW+priorities.indexOf(p)*(bwSingle+1)).toFixed(0)+'" y="'+(yBase-bh).toFixed(0)+'" width="'+bwSingle+'" height="'+bh.toFixed(0)+'" fill="'+colors[p]+'" opacity="0.85" rx="2"/>';
+      });
+      return rects+'<text x="'+(pL+i*colW+colW/2).toFixed(0)+'" y="'+(bH-pB+12)+'" text-anchor="middle" font-size="8" fill="var(--muted2)">'+w.label+'</text>';
+    }).join('');
+    barEl.innerHTML = '<svg viewBox="0 0 '+bW+' '+bH+'" style="width:100%;">'
+      +'<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(bH-pB)+'" stroke="var(--border2)" stroke-width="0.5"/>'
+      +'<line x1="'+pL+'" y1="'+(bH-pB)+'" x2="'+(bW-pR)+'" y2="'+(bH-pB)+'" stroke="var(--border2)" stroke-width="0.5"/>'
+      +'<text x="'+(bW-pR)+'" y="'+(pT+8)+'" text-anchor="end" font-size="7" fill="var(--accent)">■①</text>'
+      +'<text x="'+(bW-pR-20)+'" y="'+(pT+8)+'" text-anchor="end" font-size="7" fill="#ff69b4">■②</text>'
+      +'<text x="'+(bW-pR-40)+'" y="'+(pT+8)+'" text-anchor="end" font-size="7" fill="#5B8DD9">■③</text>'
+      +bars+'</svg>';
+  }
+
+  // ── 数値サマリー ──
+  const sumEl = document.getElementById('graph-summary');
+  if (sumEl) {
+    const total3 = counts[3];
+    const total2 = counts[2];
+    let warn = '';
+    if (total3 > total2 * 2 && total3 > 4) warn = '⚠️ ③が多め。リフレッシュ週のルールを確認しましょう。';
+    if (total2 === 0 && _graphMonth === new Date().getMonth()) warn = '💡 今月はまだ②の予定がありません。';
+    sumEl.innerHTML = [
+      {p:'① 個人・家族', c:counts[1], color:'var(--accent)'},
+      {p:'② 恋人',       c:counts[2], color:'#ff69b4'},
+      {p:'③ 友人・同僚', c:counts[3], color:'#5B8DD9'},
+      {p:'仕事',          c:counts[0], color:'#7A9E7E'},
+    ].map(d=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;">'
+      +'<span style="font-size:0.82rem;color:var(--text);">'+d.p+'</span>'
+      +'<span style="font-family:\'DM Mono\',monospace;font-size:0.9rem;color:'+d.color+';font-weight:700;">'+d.c+'件</span>'
+      +'</div>').join('')
+    + (warn ? '<div style="font-size:0.78rem;color:#E8B84B;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.2);border-radius:8px;padding:8px 12px;margin-top:4px;">'+warn+'</div>' : '');
+  }
 }
 
 // ════ 出発前チェックリスト ════
