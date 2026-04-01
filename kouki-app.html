@@ -133,6 +133,14 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   body > * { display:none !important; }
   #dlog-print-area { display:block !important; }
   #dlog-print-area { position:fixed; inset:0; background:#fff; color:#000; font-family:'Noto Sans JP',sans-serif; padding:20mm 15mm; }
+  #love-report-print-area { display:block !important; }
+}
+
+/* 週次レポート印刷エリア */
+#love-report-print-area {
+  display:none;
+  position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto;
+  padding:16mm 14mm;color:#111;font-family:'Noto Sans JP',sans-serif;font-size:12px;line-height:1.8;
 }
 
 /* TODO */
@@ -935,14 +943,58 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <div id="analysis-flow-result" style="margin-top:10px;"></div>
     </div>
 
-    <!-- ⑧ 週次レポート自動生成 -->
+    <!-- ③ 行動振り返りカレンダー -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;">📅 行動振り返りカレンダー</div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <button onclick="loveRetroChangeMonth(-1)" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#ff69b4;">‹</button>
+          <span id="retro-month-label" style="font-size:0.78rem;color:var(--text);min-width:64px;text-align:center;font-family:'DM Mono',monospace;"></span>
+          <button onclick="loveRetroChangeMonth(1)" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#ff69b4;">›</button>
+        </div>
+      </div>
+      <!-- 凡例 -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:0.65rem;color:var(--muted2);">
+        <span>🟪 相手発信</span><span>🟦 自分から</span><span>🟩 双方</span><span>⭐ 評価高（4〜5）</span><span>😐 評価低（1〜2）</span>
+      </div>
+      <!-- カレンダーグリッド -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:6px;">
+        <div style="text-align:center;font-size:0.62rem;color:var(--red);padding:2px;">日</div>
+        <div style="text-align:center;font-size:0.62rem;color:var(--muted2);padding:2px;">月</div>
+        <div style="text-align:center;font-size:0.62rem;color:var(--muted2);padding:2px;">火</div>
+        <div style="text-align:center;font-size:0.62rem;color:var(--muted2);padding:2px;">水</div>
+        <div style="text-align:center;font-size:0.62rem;color:var(--muted2);padding:2px;">木</div>
+        <div style="text-align:center;font-size:0.62rem;color:var(--muted2);padding:2px;">金</div>
+        <div style="text-align:center;font-size:0.62rem;color:#6080a8;padding:2px;">土</div>
+      </div>
+      <div id="retro-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+      <!-- 日別詳細 -->
+      <div id="retro-day-detail" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.2);border-radius:10px;font-size:0.8rem;color:var(--text);line-height:1.7;"></div>
+    </div>
+
+    <!-- ⑧ 週次レポート自動生成（印刷対応） -->
     <div class="card" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;">📝 週次レポート自動生成</div>
-        <button onclick="loveGenerateWeeklyReport()" style="padding:6px 12px;background:rgba(255,105,180,0.12);border:1px solid rgba(255,105,180,0.3);border-radius:20px;color:#ff69b4;font-size:0.75rem;cursor:pointer;white-space:nowrap;">🔄 生成</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="loveGenerateWeeklyReport()" style="padding:6px 11px;background:rgba(255,105,180,0.12);border:1px solid rgba(255,105,180,0.3);border-radius:18px;color:#ff69b4;font-size:0.73rem;cursor:pointer;white-space:nowrap;">🔄 生成</button>
+          <button onclick="lovePrintWeeklyReport()" id="love-print-btn" style="display:none;padding:6px 11px;background:rgba(91,141,217,0.12);border:1px solid rgba(91,141,217,0.3);border-radius:18px;color:#5B8DD9;font-size:0.73rem;cursor:pointer;white-space:nowrap;">🖨️ 印刷/PDF</button>
+        </div>
       </div>
       <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:8px;" id="analysis-report-range"></div>
       <div id="analysis-report-content" style="font-size:0.82rem;color:var(--text);line-height:1.8;"></div>
+    </div>
+
+    <!-- 発展記録 全体上書き更新 -->
+    <div class="card" style="margin-bottom:14px;background:rgba(91,141,217,0.03);border:1px solid rgba(91,141,217,0.18);">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.85rem;color:#5B8DD9;margin-bottom:8px;">🔃 発展記録を全体更新</div>
+      <div style="font-size:0.75rem;color:var(--muted2);margin-bottom:12px;line-height:1.6;">
+        記録表・週次PDFの内容を分析し、ステージ達成状況・相性評価・最近の動きを発展記録タブに一括で反映します。
+      </div>
+      <button onclick="loveForceReflectAll()" style="width:100%;padding:11px;background:rgba(91,141,217,0.1);border:1px solid rgba(91,141,217,0.3);border-radius:10px;color:#5B8DD9;font-size:0.88rem;cursor:pointer;font-family:'Shippori Mincho',serif;">
+        🔃 今すぐ発展記録に反映・上書き
+      </button>
+      <div id="reflect-msg" style="font-size:0.75rem;text-align:center;margin-top:8px;min-height:14px;color:var(--green);"></div>
     </div>
 
   </div>
@@ -9665,6 +9717,208 @@ function calGraphRender() {
   }
 }
 
+// ════ ③ 行動振り返りカレンダー ════
+let _retroYear  = new Date().getFullYear();
+let _retroMonth = new Date().getMonth();
+
+function loveRetroInit() {
+  _retroYear  = new Date().getFullYear();
+  _retroMonth = new Date().getMonth();
+  loveRetroRender();
+}
+
+window.loveRetroChangeMonth = function(dir) {
+  _retroMonth += dir;
+  if (_retroMonth > 11) { _retroMonth = 0; _retroYear++; }
+  if (_retroMonth < 0)  { _retroMonth = 11; _retroYear--; }
+  loveRetroRender();
+};
+
+function loveRetroRender() {
+  const label = document.getElementById('retro-month-label');
+  if (label) label.textContent = _retroYear + '/' + String(_retroMonth+1).padStart(2,'0');
+
+  const grid = document.getElementById('retro-cal-grid');
+  if (!grid) return;
+
+  // 記録表データ取得
+  let recs = [];
+  try { recs = JSON.parse(localStorage.getItem(LOVE_DIARY_LS) || '[]'); } catch {}
+  const prefix = _retroYear + '-' + String(_retroMonth+1).padStart(2,'0');
+  const monthRecs = recs.filter(r => r.date?.startsWith(prefix));
+
+  // 日付別にインデックス化
+  const byDate = {};
+  monthRecs.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date] = [];
+    byDate[r.date].push(r);
+  });
+
+  const firstDay = new Date(_retroYear, _retroMonth, 1);
+  const lastDay  = new Date(_retroYear, _retroMonth+1, 0);
+  const today    = toDateStr(new Date());
+
+  // 月曜始まりのオフセット
+  const startDow = firstDay.getDay();
+  const offset   = startDow === 0 ? 6 : startDow - 1;
+
+  let html = '';
+
+  // 空白セル
+  for (let i = 0; i < offset; i++) {
+    html += '<div></div>';
+  }
+
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const ds   = _retroYear + '-' + String(_retroMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const dObj = new Date(ds + 'T00:00:00');
+    const dow  = dObj.getDay();
+    const recs_d = byDate[ds] || [];
+
+    // 接触状態の判定
+    const contacts = recs_d.filter(r => r.contact && r.contact !== 'なし');
+    const fromOther = recs_d.some(r => r.contact === 'あり（相手から）' || r.contact === 'あり（双方）');
+    const fromSelf  = recs_d.some(r => r.contact === 'あり（自分から）');
+    const hasBoth   = recs_d.some(r => r.contact === 'あり（双方）');
+    const maxStar   = recs_d.length ? Math.max(...recs_d.map(r => r.star || 0)) : 0;
+    const hasRecord = recs_d.length > 0;
+
+    // セル背景色
+    let bg = 'var(--surface2)';
+    if (hasBoth)       bg = 'rgba(122,158,126,0.25)';   // 双方→緑
+    else if (fromOther) bg = 'rgba(148,92,192,0.2)';    // 相手から→紫
+    else if (fromSelf)  bg = 'rgba(91,141,217,0.2)';    // 自分から→青
+    else if (hasRecord) bg = 'rgba(200,169,110,0.12)';  // 記録あり→薄ゴールド
+
+    const isToday  = ds === today;
+    const dowColor = dow===0?'var(--red)':dow===6?'#6080a8':'var(--text)';
+    const border   = isToday ? '2px solid #ff69b4' : '1px solid var(--border)';
+
+    // アイコン
+    let icons = '';
+    if (maxStar >= 4) icons += '⭐';
+    else if (maxStar <= 2 && maxStar > 0) icons += '😐';
+    if (fromOther) icons += '💗';
+
+    html += `<div onclick="loveRetroShowDay('${ds}')" style="background:${bg};border:${border};border-radius:6px;padding:3px 2px;min-height:36px;cursor:${hasRecord?'pointer':'default'};position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;">
+      <div style="font-size:0.68rem;color:${dowColor};font-family:'DM Mono',monospace;line-height:1;">${d}</div>
+      <div style="font-size:0.6rem;line-height:1.2;text-align:center;">${icons}</div>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+
+  // 月サマリーを更新
+  const detail = document.getElementById('retro-day-detail');
+  if (detail) detail.style.display = 'none';
+}
+
+window.loveRetroShowDay = function(ds) {
+  const detail = document.getElementById('retro-day-detail');
+  if (!detail) return;
+
+  let recs = [];
+  try { recs = JSON.parse(localStorage.getItem(LOVE_DIARY_LS) || '[]'); } catch {}
+  const dayRecs = recs.filter(r => r.date === ds);
+
+  if (!dayRecs.length) { detail.style.display = 'none'; return; }
+
+  const d   = new Date(ds + 'T00:00:00');
+  const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+  const starStr = r => r.star ? '⭐'.repeat(r.star) : '';
+  const contactColor = c =>
+    c === 'あり（相手から）' ? '#ff69b4' :
+    c === 'あり（双方）'     ? '#7A9E7E' :
+    c === 'あり（自分から）' ? '#5B8DD9' : 'var(--muted2)';
+
+  detail.style.display = 'block';
+  detail.innerHTML = `<div style="font-family:'Shippori Mincho',serif;font-size:0.85rem;color:#ff69b4;margin-bottom:8px;">${(d.getMonth()+1)}/${d.getDate()}（${dow}）</div>`
+    + dayRecs.map(r => `<div style="padding:7px 0;border-bottom:1px solid var(--border);">
+      ${r.contact ? `<span style="font-size:0.7rem;color:${contactColor(r.contact)};border:1px solid ${contactColor(r.contact)}44;border-radius:6px;padding:1px 6px;margin-right:5px;">${esc(r.contact)}</span>` : ''}
+      ${starStr(r) ? `<span style="font-size:0.72rem;">${starStr(r)}</span>` : ''}
+      ${r.content ? `<div style="font-size:0.8rem;color:var(--text);margin-top:4px;white-space:pre-wrap;">${esc(r.content)}</div>` : ''}
+      ${r.reaction ? `<div style="font-size:0.72rem;color:#ff69b4;margin-top:3px;">😊 ${esc(r.reaction)}</div>` : ''}
+      ${r.memo ? `<div style="font-size:0.7rem;color:var(--muted2);margin-top:3px;">📝 ${esc(r.memo)}</div>` : ''}
+    </div>`).join('');
+};
+
+// ════ 週次レポート 印刷/PDF ════
+window.lovePrintWeeklyReport = function() {
+  const src = document.getElementById('analysis-report-content');
+  const rangeEl = document.getElementById('analysis-report-range');
+  const area  = document.getElementById('love-report-print-area');
+  const print = document.getElementById('love-report-print-content');
+  if (!src || !area || !print) return;
+
+  const range = rangeEl?.textContent || '';
+
+  // 印刷用HTMLを生成
+  print.innerHTML = `
+    <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #ff69b4;padding-bottom:10px;">
+      <div style="font-size:18px;font-weight:700;color:#c0505a;font-family:'Noto Sans JP',sans-serif;">恋愛記録 週次レポート</div>
+      <div style="font-size:12px;color:#777;margin-top:4px;">${range}</div>
+    </div>
+    <div style="font-size:13px;line-height:1.9;color:#111;">${src.innerHTML}</div>
+    <div style="margin-top:16px;font-size:10px;color:#aaa;text-align:right;border-top:1px solid #eee;padding-top:6px;">
+      作成日：${new Date().toLocaleDateString('ja-JP')} ／ kouki-app 週次レポート
+    </div>`;
+
+  area.style.display = 'block';
+  area.scrollTop = 0;
+};
+
+// loveGenerateWeeklyReport 後に印刷ボタンを表示
+const _origGenReport = window.loveGenerateWeeklyReport;
+window.loveGenerateWeeklyReport = function() {
+  _origGenReport && _origGenReport();
+  const btn = document.getElementById('love-print-btn');
+  if (btn) btn.style.display = 'inline-block';
+};
+
+// ════ 発展記録 全体上書き更新 ════
+window.loveForceReflectAll = function() {
+  const msg = document.getElementById('reflect-msg');
+  if (msg) { msg.style.color='var(--muted2)'; msg.textContent='📊 分析中...'; }
+
+  // 最新の記録表・PDFデータを再取得して強制反映
+  _diaryLoaded = false;
+  _loveDiaryLoad();
+
+  setTimeout(() => {
+    try {
+      loveReflectAllToProgress();
+
+      // 発展記録タブのUIも再描画
+      if (_loveProgress) {
+        const nameEl = document.getElementById('love-target-name');
+        if (nameEl && _loveProgress.name) nameEl.value = _loveProgress.name;
+        renderLoveStages();
+        renderLoveGauge();
+        renderLoveRoadmap();
+        renderLoveChart();
+        renderLoveAdvice();
+        renderLoveRecentDiary();
+      }
+
+      if (msg) { msg.style.color='var(--green)'; msg.textContent='✅ 発展記録を更新しました'; }
+    } catch(e) {
+      if (msg) { msg.style.color='var(--red)'; msg.textContent='エラー: '+e.message; }
+    }
+    setTimeout(() => { if (msg) msg.textContent=''; }, 3500);
+  }, 300);
+};
+
+// loveAnalysisInit に行動振り返りカレンダーを追加
+const _origAnalysisInit = window._loveAnalysisInitOrig || null;
+function loveAnalysisInit() {
+  loveRequirePass('analysis', () => {
+    _loveAnalysisRender();
+    loveRetroInit();
+    const ad = document.getElementById('analysis-action-date');
+    if (ad && !ad.value) ad.value = toDateStr(new Date());
+  });
+}
+
 // ════ 出発前チェックリスト ════
 const CHECKLIST_KEY = 'kouki_drive_checklist';
 
@@ -11349,5 +11603,15 @@ window.importFamilyEvents = function() {
   setTimeout(() => { msg.textContent = ''; }, 4000);
 };
 </script>
+
+<!-- 週次レポート印刷エリア -->
+<div id="love-report-print-area">
+  <div id="love-report-print-content"></div>
+  <div style="text-align:center;margin-top:16px;">
+    <button onclick="document.getElementById('love-report-print-area').style.display='none';" style="padding:8px 20px;background:#eee;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;margin-right:8px;">✕ 閉じる</button>
+    <button onclick="window.print();" style="padding:8px 20px;background:#5B8DD9;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;">🖨️ 印刷 / PDFで保存</button>
+  </div>
+</div>
+
 </body>
 </html>
