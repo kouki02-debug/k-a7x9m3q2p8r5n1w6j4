@@ -135,6 +135,9 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   #dlog-print-area { display:block !important; }
   #dlog-print-area { position:fixed; inset:0; background:#fff; color:#000; font-family:'Noto Sans JP',sans-serif; padding:20mm 15mm; }
   #love-report-print-area { display:block !important; }
+  #weekly-print-area { display:block !important; background:#fff !important; color:#111 !important; }
+  .no-print { display:none !important; }
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 }
 
 /* 週次レポート印刷エリア */
@@ -399,7 +402,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <button class="wtab active" id="ctab-today" onclick="switchCalTab('today')">📋 今日</button>
       <button class="wtab" id="ctab-list" onclick="switchCalTab('list')">📅 カレンダー</button>
       <button class="wtab" id="ctab-adjust" onclick="switchCalTab('adjust')">🔀 調整</button>
-      <button class="wtab" id="ctab-suggest" onclick="switchCalTab('suggest')">💡 空き時間</button>
+      <button class="wtab" id="ctab-weekly" onclick="switchCalTab('weekly')">📓 週報</button>
       <button class="wtab" id="ctab-birthday" onclick="switchCalTab('birthday')">🎂 誕生日</button>
       <button class="wtab" id="ctab-graph" onclick="switchCalTab('graph')">📊 グラフ</button>
       <button class="wtab" id="ctab-4week" onclick="switchCalTab('4week')">📆 4週間</button>
@@ -418,6 +421,8 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
         <div id="cal-today-shift" style="font-size:0.88rem;color:var(--text);line-height:1.8;"></div>
         <div id="cal-today-free" style="margin-top:10px;padding:8px 12px;background:rgba(122,158,126,0.08);border:1px solid rgba(122,158,126,0.2);border-radius:8px;font-size:0.82rem;color:#7A9E7E;"></div>
         <div id="cal-today-events" style="margin-top:10px;font-size:0.82rem;color:var(--text);line-height:1.8;"></div>
+        <!-- 睡眠推奨（翌日早番の場合に表示） -->
+        <div id="cal-sleep-rec" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(148,92,192,0.08);border:1px solid rgba(148,92,192,0.25);border-radius:8px;font-size:0.82rem;color:#9E6FD0;line-height:1.6;"></div>
       </div>
 
       <!-- 今週カード -->
@@ -580,19 +585,54 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     </div>
 
     <!-- ═══ 空き時間サジェストタブ ═══ -->
-    <div id="csec-suggest" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--accent);">💡 空き時間サジェスト</div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input type="month" id="suggest-month-input"
-            style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;color:var(--text);font-size:0.8rem;outline:none;">
-          <button onclick="calSuggestRun()" style="padding:6px 12px;background:rgba(200,169,110,0.12);border:1px solid var(--accent);border-radius:18px;color:var(--accent);font-size:0.75rem;cursor:pointer;white-space:nowrap;">🔍 分析</button>
+    <!-- ═══ 週報タブ ═══ -->
+    <div id="csec-weekly" style="padding:0;display:none;overflow-y:auto;max-height:calc(100vh - 110px);background:#ffffff;">
+
+      <!-- ヘッダー（白固定） -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid #e0e0e0;background:#ffffff;position:sticky;top:0;z-index:10;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button onclick="calWeeklyMove(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#C8973A;padding:2px 6px;">‹</button>
+          <span id="weekly-range-label" style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:#222;min-width:140px;text-align:center;"></span>
+          <button onclick="calWeeklyMove(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#C8973A;padding:2px 6px;">›</button>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="calWeeklyToday()" style="padding:5px 10px;background:rgba(200,169,110,0.1);border:1px solid #C8973A;border-radius:16px;color:#C8973A;font-size:0.72rem;cursor:pointer;">今週</button>
+          <button onclick="calWeeklyPrint()" style="padding:5px 10px;background:rgba(91,141,217,0.1);border:1px solid #5B8DD9;border-radius:16px;color:#5B8DD9;font-size:0.72rem;cursor:pointer;">🖨️ 印刷</button>
         </div>
       </div>
-      <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:12px;line-height:1.6;">
-        シフト・休日・既存予定を参照して「② に誘える日」「③ を入れられる日」を自動提案します。
+
+      <!-- 凡例 -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding:7px 16px;border-bottom:1px solid #e0e0e0;background:#fafafa;">
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;">🏭 仕事</span>
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#fff8e1;color:#8a6000;border:1px solid #f0c040;">① 個人</span>
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#fce4ec;color:#880e4f;border:1px solid #f48fb1;">② 恋人</span>
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;">③ 友人</span>
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;">🎂 誕生日</span>
+        <span style="font-size:0.63rem;padding:1px 7px;border-radius:8px;background:#e8eaf6;color:#283593;border:1px solid #9fa8da;">😴 就寝</span>
       </div>
-      <div id="suggest-result" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+      <!-- 終日予定帯 -->
+      <div id="weekly-allday-row" style="background:#f9f9f9;border-bottom:2px solid #ddd;min-height:28px;"></div>
+
+      <!-- 時間割グリッド（白背景固定） -->
+      <div id="weekly-grid-wrap" style="padding:0 0 0;overflow-x:auto;background:#ffffff;">
+        <div id="weekly-grid" style="min-width:520px;background:#ffffff;"></div>
+      </div>
+
+      <!-- 日別サマリー欄 -->
+      <div style="background:#fafafa;border-top:2px solid #ddd;padding:10px 16px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.8rem;color:#555;margin-bottom:8px;">📊 日別サマリー</div>
+        <div id="weekly-summary-row" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <!-- 週報印刷エリア（白固定） -->
+    <div id="weekly-print-area" style="display:none;position:fixed;inset:0;z-index:9999;background:#ffffff !important;overflow-y:auto;padding:8mm 10mm;color:#111 !important;font-family:'Noto Sans JP',sans-serif;">
+      <div id="weekly-print-content" style="background:#ffffff;color:#111;"></div>
+      <div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;" class="no-print">
+        <button onclick="document.getElementById('weekly-print-area').style.display='none';" style="padding:8px 18px;background:#eee;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;">✕ 閉じる</button>
+        <button onclick="window.print();" style="padding:8px 18px;background:#5B8DD9;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;">🖨️ 印刷 / PDFで保存</button>
+      </div>
     </div>
 
     <!-- ═══ 誕生日・記念日リマインダータブ ═══ -->
@@ -9576,7 +9616,7 @@ function _detectPriority(summary) {
 
 // ── タブ切替 ──
 window.switchCalTab = function(tab) {
-  ['today','list','adjust','suggest','birthday','graph','4week','heatmap'].forEach(t => {
+  ['today','list','adjust','weekly','birthday','graph','4week','heatmap'].forEach(t => {
     const sec = document.getElementById('csec-' + t);
     const btn = document.getElementById('ctab-' + t);
     if (sec) sec.style.display = t === tab ? 'block' : 'none';
@@ -9585,7 +9625,7 @@ window.switchCalTab = function(tab) {
   if (tab === 'today')    calTodayInit();
   if (tab === 'list')     calListInit();
   if (tab === 'adjust')   calAdjInit();
-  if (tab === 'suggest')  calSuggestInit();
+  if (tab === 'weekly')   calWeeklyInit();
   if (tab === 'birthday') calBirthdayInit();
   if (tab === 'graph')    calGraphInit();
   if (tab === '4week')    cal4WeekRender();
@@ -9760,7 +9800,21 @@ function calListRenderEvents() {
 
     evts.forEach(e => {
       const pr = CAL_PRIORITY[e.priority || 0];
-      const isWork = e.priority === 0;
+      // ① 個人・家族の「休日」「○終日OFF」「♦休暇期間」「リフレッシュ」はタグなしシンプル表示
+      const noTag = e.isOff || e.isRefresh
+        || e.title?.includes('終日OFF')
+        || e.title?.includes('休暇期間')
+        || e.title?.includes('リフレッシュ')
+        || (e.title === '休日' && e.priority <= 1);
+      if (noTag) {
+        html += '<div style="display:flex;align-items:center;gap:8px;background:rgba(200,169,110,0.04);border:1px solid rgba(200,169,110,0.12);border-radius:8px;padding:6px 10px;margin-bottom:3px;">'
+          + '<span style="font-size:0.85rem;">🏖️</span>'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:0.85rem;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(e.title) + '</div>'
+          + '</div>'
+          + '</div>';
+        return;
+      }
       html += '<div style="display:flex;align-items:center;gap:8px;background:'+pr.bg+';border:1px solid '+pr.border+';border-radius:8px;padding:6px 10px;margin-bottom:3px;">'
         + '<span style="font-size:0.65rem;padding:1px 5px;border-radius:6px;background:'+pr.bg+';color:'+pr.color+';border:1px solid '+pr.border+';white-space:nowrap;flex-shrink:0;">' + pr.label + '</span>'
         + '<div style="flex:1;min-width:0;">'
@@ -10802,8 +10856,26 @@ function _renderTodayCard() {
     }
   }
 
-  // 今日の予定
-  const evtEl = document.getElementById('cal-today-events');
+  // 睡眠推奨（翌日早番チェック）
+  const sleepEl = document.getElementById('cal-sleep-rec');
+  if (sleepEl) {
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = toDateStr(tomorrow);
+    const { shift: tomorrowShift } = getShiftInfo(tomorrowStr);
+    if (tomorrowShift && tomorrowShift.shiftType === '早番') {
+      // 早番（06:00出勤）に6時間以上の睡眠を確保 → 00:00までに就寝
+      const startH = parseInt((tomorrowShift.time || '06:00').split(':')[0], 10) || 6;
+      const needSleep = 6; // 最低6時間
+      const bedDeadline = startH - needSleep; // 6-6=0 → 0時=24時
+      const bedStr = bedDeadline <= 0 ? '深夜0時（24:00）' : bedDeadline + ':00';
+      sleepEl.style.display = 'block';
+      sleepEl.innerHTML =
+        '🌙 <b>明日は早番（' + (tomorrowShift.time || '06:00〜') + '）</b><br>'
+        + '6時間以上の睡眠を確保するため、<b>' + bedStr + 'までに就寝</b>が目安です。';
+    } else {
+      sleepEl.style.display = 'none';
+    }
+  }
   const userEvts = evts.filter(e => e.priority > 0 && !e.isRefresh && !e.noThird && !e.isBirthday);
   if (evtEl) {
     if (!userEvts.length) {
@@ -10812,6 +10884,18 @@ function _renderTodayCard() {
       const pr = CAL_PRIORITY;
       evtEl.innerHTML = userEvts.map(e => {
         const p = pr[e.priority] || pr[0];
+        // 休日・終日OFF・休暇期間・リフレッシュはタグなし
+        const noTag = e.isOff || e.isRefresh
+          || e.title?.includes('終日OFF')
+          || e.title?.includes('休暇期間')
+          || e.title?.includes('リフレッシュ')
+          || (e.title === '休日' && e.priority <= 1);
+        if (noTag) {
+          return '<div style="display:flex;align-items:center;gap:6px;">'
+            + '<span style="font-size:0.82rem;">🏖️</span>'
+            + '<span style="font-size:0.82rem;color:var(--muted2);">'+esc(e.title)+'</span>'
+            + '</div>';
+        }
         return '<div style="display:flex;align-items:center;gap:6px;">'
           + '<span style="font-size:0.62rem;color:'+p.color+';border:1px solid '+p.border+';border-radius:5px;padding:0 5px;white-space:nowrap;">'+p.label.slice(0,1)+'</span>'
           + '<span style="font-size:0.82rem;color:var(--text);">'+esc(e.title)+'</span>'
@@ -11139,6 +11223,371 @@ window.calHeatmapShowDay = function(ds) {
   }
   detail.style.display = 'block';
   detail.innerHTML = html;
+};
+
+// ════ 週報タブ ════
+let _weeklyBaseMonday = null; // 表示中の週の月曜日
+
+// イベントの色定義
+const WEEKLY_COLORS = {
+  work:    { bg:'rgba(122,158,126,0.25)', border:'#7A9E7E', text:'#2a5a36' },
+  pr1:     { bg:'rgba(200,169,110,0.2)',  border:'var(--accent)', text:'#5a3d00' },
+  pr2:     { bg:'rgba(255,105,180,0.2)', border:'#ff69b4', text:'#8b0040' },
+  pr3:     { bg:'rgba(91,141,217,0.2)',  border:'#5B8DD9', text:'#1a3a70' },
+  off:     { bg:'rgba(122,158,126,0.1)', border:'rgba(122,158,126,0.3)', text:'#7A9E7E' },
+  refresh: { bg:'rgba(122,158,126,0.08)',border:'rgba(122,158,126,0.2)', text:'#7A9E7E' },
+  bday:    { bg:'rgba(148,92,192,0.18)', border:'#9E6FD0', text:'#5a1a8a' },
+};
+
+const HOUR_H = 28; // 1時間の高さ(px) — 0〜24 = 672px
+const SHOW_HOURS_START = 0;
+const SHOW_HOURS_END   = 24;
+
+function calWeeklyInit() {
+  if (!_weeklyBaseMonday) calWeeklyToday();
+  else calWeeklyRender();
+}
+
+window.calWeeklyToday = function() {
+  const d = new Date();
+  const dow = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0,0,0,0);
+  _weeklyBaseMonday = monday;
+  calWeeklyRender();
+};
+
+window.calWeeklyMove = function(dir) {
+  if (!_weeklyBaseMonday) calWeeklyToday();
+  const m = new Date(_weeklyBaseMonday);
+  m.setDate(m.getDate() + dir * 7);
+  _weeklyBaseMonday = m;
+  calWeeklyRender();
+};
+
+// 全カレンダーIDリスト（同期対象）
+const ALL_CAL_IDS = [
+  'primary',
+  'a531b4940fa67c2b341cd0c62cdf765f7a2c10c844b00289b6fde019bcae32af@group.calendar.google.com', // フジパン
+  '54a94f9a433779030f85b7e42bfcd7aedeeed9b08cc8e16a761af36258113fea@group.calendar.google.com', // 恋愛2510
+  'd318ef4241dc2d723024bacf6a5dc4fabedc036b9412554a73bd3338113f8172@group.calendar.google.com', // P就寝時間
+  'f8543ee50a43cf8c147b65480ab0aa52b26a3a7b5d8a897c4d5abfca3c018633@group.calendar.google.com', // P風呂時間
+  '4b8382000c527e7398374214bf0638ec812c4cb5b43c8789c26eb712965eef18@group.calendar.google.com', // P食事時間
+  '9c6b7492a457ad7fb22861a523a72e7d4402ca6b9be45a37f07371c478438f3d@group.calendar.google.com', // 予定管理
+  '0790f59eec03a29faa9f6afb3d334a89a6c9e547fe037ea24990e8b13d9d46f2@group.calendar.google.com', // 家庭共有
+  'b1966bb292516a5cd6fa622399e40d57d99ad3c62de03b890736bd6cc7ec8f01@group.calendar.google.com', // 休暇
+  '43b8afd5435657057a9fba574785df31505c67094c054947ba28b3192c97213a@group.calendar.google.com', // フジパン労組
+  'ja.japanese#holiday@group.v.calendar.google.com', // 日本の祝日
+];
+
+// カレンダーごとの色・種別定義
+const CAL_META = {
+  'd318ef4241dc2d723024bacf6a5dc4fabedc036b9412554a73bd3338113f8172@group.calendar.google.com': { type:'sleep',  label:'就寝' },
+  'f8543ee50a43cf8c147b65480ab0aa52b26a3a7b5d8a897c4d5abfca3c018633@group.calendar.google.com': { type:'bath',   label:'風呂' },
+  '4b8382000c527e7398374214bf0638ec812c4cb5b43c8789c26eb712965eef18@group.calendar.google.com': { type:'meal',   label:'食事' },
+  '54a94f9a433779030f85b7e42bfcd7aedeeed9b08cc8e16a761af36258113fea@group.calendar.google.com': { type:'love',   label:'恋愛' },
+  'a531b4940fa67c2b341cd0c62cdf765f7a2c10c844b00289b6fde019bcae32af@group.calendar.google.com': { type:'work',   label:'仕事' },
+  'ja.japanese#holiday@group.v.calendar.google.com': { type:'holiday', label:'祝日' },
+};
+
+let _weeklyAllCalEvts = []; // 全カレンダーから取得したイベント
+let _weeklyFetchedRange = null;
+
+// 全カレンダーのイベントをlocalStorageキャッシュ + GCALキャッシュから収集
+function _weeklyCollectAllEvts(startStr, endStr) {
+  let all = [];
+
+  // 1. GCALキャッシュ（シフト等）
+  try { all = JSON.parse(localStorage.getItem(CAL_GCAL_LS) || '[]'); } catch {}
+
+  // 2. 個人予定
+  try {
+    const personal = JSON.parse(localStorage.getItem(CAL_PERSONAL_LS) || '[]');
+    all = [...all, ...personal];
+  } catch {}
+
+  // 3. localStorageに保存されているGcal週次イベントキャッシュ
+  const weekKey = 'kouki_weekly_gcal_' + startStr;
+  try {
+    const cached = JSON.parse(localStorage.getItem(weekKey) || '[]');
+    if (cached.length) {
+      all = [...all, ...cached];
+    }
+  } catch {}
+
+  return all.filter(e => e.date >= startStr && e.date <= endStr);
+}
+
+function calWeeklyRender() {
+  const monday = _weeklyBaseMonday || (() => { calWeeklyToday(); return _weeklyBaseMonday; })();
+  const DOW_LABELS  = ['月','火','水','木','金','土','日'];
+  const DOW_COLORS  = ['#333','#333','#333','#333','#333','#6080a8','#c06060'];
+  const today = toDateStr(new Date());
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    days.push({ date: toDateStr(d), d, label: DOW_LABELS[i], color: DOW_COLORS[i] });
+  }
+
+  const rangeEl = document.getElementById('weekly-range-label');
+  if (rangeEl) {
+    const f = days[0].d, l = days[6].d;
+    rangeEl.textContent = (f.getMonth()+1)+'/'+f.getDate()+'（月）〜'+(l.getMonth()+1)+'/'+l.getDate()+'（日）';
+  }
+
+  const allEvts = _weeklyCollectAllEvts(days[0].date, days[6].date)
+    .filter(e => e.title !== '昼休憩' && e.title !== '休憩 60分固定');
+
+  // 終日イベントと時間指定イベントを分離
+  const isTimedEvent = e => {
+    if (e.time && /\d+:\d+/.test(e.time)) return true;
+    if (e.startHour !== undefined) return true;
+    // GcalのdateTimeイベント（startHourが変換済み）
+    return false;
+  };
+
+  const grid     = document.getElementById('weekly-grid');
+  const alldayEl = document.getElementById('weekly-allday-row');
+  const summaryEl= document.getElementById('weekly-summary-row');
+  if (!grid) return;
+
+  const totalH  = HOUR_H * (SHOW_HOURS_END - SHOW_HOURS_START);
+  const timeColW = 36;
+
+  // ─── 終日予定帯 ───
+  let alldayHtml = `<div style="display:flex;background:#f9f9f9;">`;
+  alldayHtml += `<div style="width:${timeColW}px;flex-shrink:0;border-right:1px solid #ddd;padding:4px 2px;text-align:center;font-size:0.55rem;color:#888;">終日</div>`;
+  days.forEach((day, di) => {
+    const dayAllday = allEvts.filter(e => e.date === day.date && !isTimedEvent(e));
+    const borderR = di < 6 ? '1px solid #ddd' : 'none';
+    alldayHtml += `<div style="flex:1;min-width:0;border-right:${borderR};padding:2px 1px;min-height:24px;">`;
+    dayAllday.forEach(e => {
+      const col = _weeklyGetColor(e);
+      const noShow = e.title?.includes('リフレッシュ') || e.title?.includes('休暇期間') || e.title === '休日' || e.title?.includes('終日OFF');
+      if (noShow) {
+        // リフレッシュ・休日は薄い帯
+        alldayHtml += `<div style="background:#e8f5e9;border-left:3px solid #81c784;font-size:0.55rem;color:#388e3c;padding:1px 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;" title="${e.title}">🌿</div>`;
+      } else {
+        const label = e.title.length > 8 ? e.title.slice(0,7)+'…' : e.title;
+        alldayHtml += `<div style="background:${col.bg};border:1px solid ${col.border};font-size:0.55rem;color:${col.text};padding:1px 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;" title="${e.title}">${esc(label)}</div>`;
+      }
+    });
+    alldayHtml += `</div>`;
+  });
+  alldayHtml += `</div>`;
+  if (alldayEl) alldayEl.innerHTML = alldayHtml;
+
+  // ─── 日付ヘッダー ───
+  let headerHtml = `<div style="display:flex;position:sticky;top:0;z-index:20;background:#ffffff;border-bottom:2px solid #ccc;">`;
+  headerHtml += `<div style="width:${timeColW}px;flex-shrink:0;padding:5px 0;text-align:center;font-size:0.55rem;color:#999;border-right:1px solid #ddd;">時刻</div>`;
+  days.forEach((day, di) => {
+    const isToday  = day.date === today;
+    const borderR  = di < 6 ? '1px solid #ddd' : 'none';
+    const bgCol    = isToday ? '#fff8e1' : '#ffffff';
+    headerHtml += `<div style="flex:1;min-width:0;padding:4px 2px;text-align:center;border-right:${borderR};background:${bgCol};">
+      <div style="font-size:0.62rem;color:${day.color};">${day.label}</div>
+      <div style="font-size:0.8rem;font-weight:${isToday?'700':'400'};color:${isToday?'#C8973A':day.color};font-family:monospace;">${day.d.getDate()}</div>
+    </div>`;
+  });
+  headerHtml += `</div>`;
+
+  // ─── タイムグリッド ───
+  let bodyHtml = `<div style="display:flex;position:relative;background:#ffffff;">`;
+
+  // 時刻列
+  bodyHtml += `<div style="width:${timeColW}px;flex-shrink:0;border-right:1px solid #ddd;position:relative;height:${totalH}px;background:#ffffff;">`;
+  for (let h = SHOW_HOURS_START; h <= SHOW_HOURS_END; h++) {
+    const y = (h - SHOW_HOURS_START) * HOUR_H;
+    if (h < SHOW_HOURS_END) {
+      bodyHtml += `<div style="position:absolute;top:${y}px;right:4px;font-size:0.55rem;color:#999;font-family:monospace;line-height:1;">${String(h).padStart(2,'0')}</div>`;
+    }
+  }
+  bodyHtml += `</div>`;
+
+  // 各日の列
+  days.forEach((day, di) => {
+    const isToday = day.date === today;
+    const dayEvts = allEvts.filter(e => e.date === day.date && isTimedEvent(e));
+    const borderR = di < 6 ? '1px solid #ddd' : 'none';
+    const bgCol   = isToday ? '#fffdf5' : '#ffffff';
+
+    bodyHtml += `<div style="flex:1;min-width:0;border-right:${borderR};background:${bgCol};position:relative;height:${totalH}px;">`;
+
+    // 時間ライン
+    for (let h = SHOW_HOURS_START; h < SHOW_HOURS_END; h++) {
+      const y = (h - SHOW_HOURS_START) * HOUR_H;
+      const isMajor = h % 3 === 0;
+      bodyHtml += `<div style="position:absolute;top:${y}px;left:0;right:0;border-top:1px solid ${isMajor?'#ddd':'#f0f0f0'};"></div>`;
+    }
+
+    // 現在時刻ライン
+    if (isToday) {
+      const now = new Date();
+      const nowH = now.getHours() + now.getMinutes()/60;
+      if (nowH >= SHOW_HOURS_START && nowH < SHOW_HOURS_END) {
+        const nowY = (nowH - SHOW_HOURS_START) * HOUR_H;
+        bodyHtml += `<div style="position:absolute;top:${nowY.toFixed(0)}px;left:0;right:0;border-top:2px solid #ff4081;z-index:3;">
+          <div style="position:absolute;left:-1px;top:-4px;width:8px;height:8px;border-radius:50%;background:#ff4081;"></div>
+        </div>`;
+      }
+    }
+
+    // イベントブロック
+    dayEvts.forEach(e => {
+      bodyHtml += _weeklyEventBlock(e);
+    });
+
+    bodyHtml += `</div>`;
+  });
+  bodyHtml += `</div>`;
+
+  grid.innerHTML = headerHtml + bodyHtml;
+
+  // ─── 日別サマリー（就寝・起床・食事） ───
+  if (summaryEl) {
+    let sumHtml = `<div style="display:flex;min-width:520px;">`;
+    sumHtml += `<div style="width:${timeColW}px;flex-shrink:0;"></div>`;
+
+    days.forEach((day, di) => {
+      const dayEvts_all = allEvts.filter(e => e.date === day.date);
+      const borderR = di < 6 ? '1px solid #ddd' : 'none';
+
+      // 就寝・起床
+      const sleepEvt = dayEvts_all.find(e => e.title?.includes('就寝') || e.calType === 'sleep');
+      let sleepStr = '—', wakeStr = '—', sleepH = null;
+      if (sleepEvt && sleepEvt.time) {
+        const m = sleepEvt.time.match(/(\d+):(\d+).*?(\d+):(\d+)/);
+        if (m) {
+          const bedH  = parseInt(m[1]) + parseInt(m[2])/60;
+          const wakeH = parseInt(m[3]) + parseInt(m[4])/60;
+          sleepStr = `${String(parseInt(m[1])).padStart(2,'0')}:${m[2]}`;
+          wakeStr  = `${String(parseInt(m[3])).padStart(2,'0')}:${m[4]}`;
+          sleepH   = wakeH > bedH ? wakeH - bedH : (24 - bedH) + wakeH;
+        }
+      }
+
+      // 食事（昼・夕）
+      const mealEvts = dayEvts_all.filter(e => e.title?.includes('食事') || e.title?.includes('昼食') || e.title?.includes('夕食') || e.calType === 'meal');
+      const hasLunch  = mealEvts.some(e => { const h = e.startHour || parseInt(e.time || ''); return h >= 11 && h <= 14; });
+      const hasDinner = mealEvts.some(e => { const h = e.startHour || parseInt(e.time || ''); return h >= 17 && h <= 21; });
+
+      sumHtml += `<div style="flex:1;min-width:0;border-right:${borderR};padding:5px 3px;font-size:0.6rem;color:#444;line-height:1.8;">
+        <div style="display:flex;align-items:center;gap:2px;">
+          <span style="color:#9E6FD0;">😴</span>
+          <span>${sleepStr}</span>
+          ${sleepH ? `<span style="color:#9E6FD0;font-size:0.55rem;">(${sleepH.toFixed(1)}h)</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;">
+          <span style="color:#E8B84B;">🌅</span>
+          <span>${wakeStr}</span>
+        </div>
+        <div style="display:flex;gap:3px;margin-top:1px;">
+          <span style="font-size:0.58rem;padding:0 3px;border-radius:3px;background:${hasLunch?'#e3f2fd':'#f5f5f5'};color:${hasLunch?'#1565c0':'#bbb'};">昼${hasLunch?'✓':'—'}</span>
+          <span style="font-size:0.58rem;padding:0 3px;border-radius:3px;background:${hasDinner?'#fce4ec':'#f5f5f5'};color:${hasDinner?'#880e4f':'#bbb'};">夕${hasDinner?'✓':'—'}</span>
+        </div>
+      </div>`;
+    });
+    sumHtml += `</div>`;
+    summaryEl.innerHTML = sumHtml;
+  }
+}
+
+// イベントブロックの生成（白背景固定カラー）
+function _weeklyEventBlock(e) {
+  let startH, endH;
+
+  if (e.time && /\d+:\d+/.test(e.time)) {
+    const m = e.time.match(/(\d+):(\d+).*?(\d+):(\d+)/);
+    if (m) {
+      startH = parseInt(m[1]) + parseInt(m[2])/60;
+      endH   = parseInt(m[3]) + parseInt(m[4])/60;
+    }
+  } else if (e.startHour !== undefined) {
+    startH = e.startHour; endH = e.endHour || (e.startHour + 1);
+  } else {
+    return '';
+  }
+
+  if (startH === undefined) return '';
+
+  // 日跨ぎ対応（就寝など）
+  if (endH < startH) endH = 24;
+
+  startH = Math.max(SHOW_HOURS_START, startH);
+  endH   = Math.min(SHOW_HOURS_END, endH);
+  if (endH <= startH) return '';
+
+  const top  = (startH - SHOW_HOURS_START) * HOUR_H;
+  const h    = Math.max(14, (endH - startH) * HOUR_H - 1);
+  const col  = _weeklyGetColorLight(e);
+  const label = e.title.length > 12 ? e.title.slice(0,11)+'…' : e.title;
+  const startStr = `${String(Math.floor(startH)).padStart(2,'0')}:${String(Math.round((startH%1)*60)).padStart(2,'0')}`;
+
+  return `<div style="position:absolute;top:${top}px;left:1px;right:1px;height:${h}px;background:${col.bg};border:1px solid ${col.border};border-radius:3px;padding:1px 3px;overflow:hidden;z-index:2;" title="${e.title}">
+    <div style="font-size:0.52rem;color:${col.border};font-family:monospace;">${startStr}</div>
+    <div style="font-size:0.6rem;color:${col.text};line-height:1.2;font-weight:500;">${esc(label)}</div>
+  </div>`;
+}
+
+// 白背景固定カラー
+function _weeklyGetColorLight(e) {
+  if (e.title?.includes('就寝') || e.calType === 'sleep')
+    return { bg:'#ede7f6', border:'#9575cd', text:'#4527a0' };
+  if (e.title?.includes('風呂') || e.calType === 'bath')
+    return { bg:'#e0f7fa', border:'#26c6da', text:'#006064' };
+  if (e.title?.includes('食事') || e.calType === 'meal')
+    return { bg:'#fff3e0', border:'#ffa726', text:'#e65100' };
+  if (e.isRefresh || e.title?.includes('リフレッシュ') || e.title?.includes('休暇期間') || e.isOff || e.title === '休日' || e.title?.includes('終日OFF'))
+    return { bg:'#f1f8e9', border:'#aed581', text:'#558b2f' };
+  if (e.isBirthday || e.title?.includes('誕生日'))
+    return { bg:'#f3e5f5', border:'#ab47bc', text:'#6a1b9a' };
+  if (e.priority === 2) return { bg:'#fce4ec', border:'#f06292', text:'#880e4f' };
+  if (e.priority === 3) return { bg:'#e3f2fd', border:'#64b5f6', text:'#0d47a1' };
+  if (e.priority === 0 || e.source === 'fujipan' || e.title?.includes('番') || e.title?.includes('専属') || e.title?.includes('健康診断'))
+    return { bg:'#e8f5e9', border:'#66bb6a', text:'#1b5e20' };
+  return { bg:'#fff8e1', border:'#ffd54f', text:'#8a6000' };
+}
+
+function _weeklyGetColor(e) {
+  return _weeklyGetColorLight(e);
+}
+
+// 週報 印刷/PDF
+window.calWeeklyPrint = function() {
+  const area    = document.getElementById('weekly-print-area');
+  const content = document.getElementById('weekly-print-content');
+  const rangeEl = document.getElementById('weekly-range-label');
+  if (!area || !content) return;
+
+  const range      = rangeEl?.textContent || '';
+  const gridHtml   = document.getElementById('weekly-grid')?.outerHTML || '';
+  const alldayHtml = document.getElementById('weekly-allday-row')?.innerHTML || '';
+  const sumHtml    = document.getElementById('weekly-summary-row')?.innerHTML || '';
+
+  content.innerHTML = `
+    <div style="background:#ffffff;color:#111;font-family:'Noto Sans JP',sans-serif;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:2px solid #5B8DD9;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;color:#1a3a70;">📓 週報</div>
+        <div style="font-size:11px;color:#555;">${range}</div>
+        <div style="font-size:10px;color:#aaa;">${new Date().toLocaleDateString('ja-JP')}</div>
+      </div>
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:4px;margin-bottom:6px;font-size:10px;color:#666;">
+        <b>終日予定：</b>${alldayHtml}
+      </div>
+      <div style="overflow:auto;background:#ffffff;">${gridHtml}</div>
+      <div style="margin-top:8px;background:#fafafa;border:1px solid #e0e0e0;border-radius:4px;padding:4px;">
+        <div style="font-size:10px;color:#555;font-weight:700;margin-bottom:4px;">📊 日別サマリー（睡眠・食事）</div>
+        <div style="overflow:auto;">${sumHtml}</div>
+      </div>
+    </div>`;
+
+  // 全要素を白固定に
+  area.style.background = '#ffffff';
+  area.style.color = '#111';
+  area.style.display = 'block';
+  area.scrollTop = 0;
 };
 
 // ════ 出発前チェックリスト ════
