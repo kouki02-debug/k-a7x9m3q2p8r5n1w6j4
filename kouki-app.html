@@ -626,15 +626,6 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       </div>
     </div>
 
-    <!-- 週報印刷エリア（白固定） -->
-    <div id="weekly-print-area" style="display:none;position:fixed;inset:0;z-index:9999;background:#ffffff !important;overflow-y:auto;padding:8mm 10mm;color:#111 !important;font-family:'Noto Sans JP',sans-serif;">
-      <div id="weekly-print-content" style="background:#ffffff;color:#111;"></div>
-      <div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;" class="no-print">
-        <button onclick="document.getElementById('weekly-print-area').style.display='none';" style="padding:8px 18px;background:#eee;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;">✕ 閉じる</button>
-        <button onclick="window.print();" style="padding:8px 18px;background:#5B8DD9;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;">🖨️ 印刷 / PDFで保存</button>
-      </div>
-    </div>
-
     <!-- ═══ 誕生日・記念日リマインダータブ ═══ -->
     <div id="csec-birthday" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -11243,6 +11234,72 @@ const HOUR_H = 28; // 1時間の高さ(px) — 0〜24 = 672px
 const SHOW_HOURS_START = 0;
 const SHOW_HOURS_END   = 24;
 
+const WEEKLY_EXTRA_LS = 'kouki_weekly_extra'; // 就寝・YouTube等の追加データ
+
+// 週報専用の全カレンダーデータを埋め込み（MCP取得済みデータ）
+function _weeklyLoadExtraData() {
+  // ══════════════════════════════════════════════════
+  // P就寝時間カレンダー（MCP取得済み 2026/4/1〜4/30）
+  // date = 就寝開始日、時刻は開始〜終了（日跨ぎは翌日04:00等）
+  // ══════════════════════════════════════════════════
+  const SLEEP_EVENTS = [
+    // 4/1週（3/31夜就寝→4/1起床 / 4/1夜就寝→4/2起床）
+    { date:'2026-04-01', title:'就寝', time:'04:00〜04:00', calType:'sleep', priority:1, note:'3/31 21:00就寝→4/1 04:00起床' },
+    { date:'2026-04-01', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 }, // 21:00→翌04:00(28:00表記)
+    { date:'2026-04-02', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 }, // 21:00→翌04:00
+    { date:'2026-04-03', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 }, // 21:00→翌04:00
+    { date:'2026-04-04', title:'就寝', time:'23:00〜32:00', calType:'sleep', priority:1 }, // 23:00→翌08:00
+    { date:'2026-04-05', title:'就寝', time:'23:00〜32:00', calType:'sleep', priority:1 }, // 23:00→翌08:00
+    // 4/6週
+    { date:'2026-04-06', title:'就寝', time:'08:00〜08:00', calType:'sleep', priority:1, note:'4/5 23:00就寝→4/6 08:00起床' },
+    { date:'2026-04-06', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 }, // 21:00→翌04:00
+    { date:'2026-04-07', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-08', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-09', title:'就寝', time:'23:00〜31:00', calType:'sleep', priority:1 }, // 23:00→翌07:00
+    { date:'2026-04-10', title:'就寝', time:'23:00〜30:00', calType:'sleep', priority:1 }, // 23:00→翌06:00
+    { date:'2026-04-11', title:'就寝', time:'23:00〜31:00', calType:'sleep', priority:1 }, // 23:00→翌07:00
+    { date:'2026-04-12', title:'就寝', time:'23:00〜31:00', calType:'sleep', priority:1 }, // 23:00→翌07:00
+    // 4/13週
+    { date:'2026-04-13', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-14', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-15', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-16', title:'就寝', time:'23:00〜28:00', calType:'sleep', priority:1 }, // 23:00→翌04:00
+    // 4/17〜4/19：就寝データなし（カレンダー未登録）
+    // 4/20週
+    { date:'2026-04-20', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-21', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-22', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-23', title:'就寝', time:'23:00〜29:00', calType:'sleep', priority:1 }, // 23:00→翌05:00
+    // 4/24〜4/26：就寝データなし（カレンダー未登録）
+    // 4/27週
+    { date:'2026-04-27', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-28', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-29', title:'就寝', time:'21:00〜28:00', calType:'sleep', priority:1 },
+    { date:'2026-04-30', title:'就寝', time:'23:00〜29:00', calType:'sleep', priority:1 }, // 23:00→翌05:00
+  ];
+
+  // ══════════════════════════════════════════════════
+  // YouTube/イベント/ライブカレンダー（MCP取得済み 2026/4/1〜4/30）
+  // ══════════════════════════════════════════════════
+  const YOUTUBE_EVENTS = [
+    // 4/11〜4/18：ドズル社？？？（終日・複数日）
+    { date:'2026-04-11', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-12', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-13', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-14', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-15', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-16', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-17', title:'ドズル社？？？', calType:'yt', priority:1 },
+    { date:'2026-04-18', title:'ドズル社？？？', calType:'yt', priority:1 },
+    // 4/11 18:00〜19:00：？？？
+    { date:'2026-04-11', title:'？？？', time:'18:00〜19:00', calType:'yt', priority:1 },
+    // 4/29：SSLIVE（終日）
+    { date:'2026-04-29', title:'SSLIVE', calType:'yt', priority:1 },
+  ];
+
+  return [...SLEEP_EVENTS, ...YOUTUBE_EVENTS];
+}
+
 function calWeeklyInit() {
   if (!_weeklyBaseMonday) calWeeklyToday();
   else calWeeklyRender();
@@ -11307,16 +11364,26 @@ function _weeklyCollectAllEvts(startStr, endStr) {
     all = [...all, ...personal];
   } catch {}
 
-  // 3. localStorageに保存されているGcal週次イベントキャッシュ
+  // 3. 就寝・YouTubeなどの埋め込みデータ
+  const extra = _weeklyLoadExtraData();
+  all = [...all, ...extra];
+
+  // 4. localStorageに保存されているGcal週次イベントキャッシュ
   const weekKey = 'kouki_weekly_gcal_' + startStr;
   try {
     const cached = JSON.parse(localStorage.getItem(weekKey) || '[]');
-    if (cached.length) {
-      all = [...all, ...cached];
-    }
+    if (cached.length) all = [...all, ...cached];
   } catch {}
 
-  return all.filter(e => e.date >= startStr && e.date <= endStr);
+  // 日付フィルタ・重複除去
+  const seen = new Set();
+  return all.filter(e => {
+    if (!e.date || e.date < startStr || e.date > endStr) return false;
+    const key = e.date + '_' + e.title + '_' + (e.time || 'allday');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function calWeeklyRender() {
@@ -11454,17 +11521,29 @@ function calWeeklyRender() {
       const dayEvts_all = allEvts.filter(e => e.date === day.date);
       const borderR = di < 6 ? '1px solid #ddd' : 'none';
 
-      // 就寝・起床
-      const sleepEvt = dayEvts_all.find(e => e.title?.includes('就寝') || e.calType === 'sleep');
+      // 就寝・起床（その日の夜就寝 = startH>=20 のものを優先して取得）
+      const sleepEvts = dayEvts_all.filter(e => e.title?.includes('就寝') || e.calType === 'sleep');
+      // 夜の就寝（20時以降）を優先。なければ朝の起床情報のみのエントリを使用
+      const sleepEvt = sleepEvts.find(e => {
+        if (!e.time) return false;
+        const m = e.time.match(/(\d+):(\d+)/);
+        return m && parseInt(m[1]) >= 20;
+      }) || sleepEvts[0];
+
       let sleepStr = '—', wakeStr = '—', sleepH = null;
       if (sleepEvt && sleepEvt.time) {
-        const m = sleepEvt.time.match(/(\d+):(\d+).*?(\d+):(\d+)/);
+        const m = sleepEvt.time.match(/(\d+):(\d+)[^0-9]+(\d+):(\d+)/);
         if (m) {
-          const bedH  = parseInt(m[1]) + parseInt(m[2])/60;
-          const wakeH = parseInt(m[3]) + parseInt(m[4])/60;
-          sleepStr = `${String(parseInt(m[1])).padStart(2,'0')}:${m[2]}`;
-          wakeStr  = `${String(parseInt(m[3])).padStart(2,'0')}:${m[4]}`;
-          sleepH   = wakeH > bedH ? wakeH - bedH : (24 - bedH) + wakeH;
+          const bedH  = _parseTimeToHour(m[1], m[2]);
+          const wakeH = _parseTimeToHour(m[3], m[4]);
+          // 28:00 → "04:00" と表示（24時間表示に変換）
+          const bedDisplay  = `${String(Math.floor(bedH  % 24)).padStart(2,'0')}:${m[2]}`;
+          const wakeDisplay = `${String(Math.floor(wakeH % 24)).padStart(2,'0')}:${m[4]}`;
+          sleepStr = bedDisplay;
+          wakeStr  = wakeDisplay;
+          // 睡眠時間計算（28:00は翌04:00として処理済み）
+          sleepH = wakeH > bedH ? wakeH - bedH : (24 - bedH) + wakeH;
+          if (sleepH < 0 || sleepH > 16) sleepH = null; // 異常値除外
         }
       }
 
@@ -11495,37 +11574,45 @@ function calWeeklyRender() {
 }
 
 // イベントブロックの生成（白背景固定カラー）
+// 時刻文字列をhour数値に変換（28:00 → 28.0 など）
+function _parseTimeToHour(hStr, mStr) {
+  return parseInt(hStr, 10) + parseInt(mStr, 10) / 60;
+}
+
 function _weeklyEventBlock(e) {
   let startH, endH;
 
   if (e.time && /\d+:\d+/.test(e.time)) {
-    const m = e.time.match(/(\d+):(\d+).*?(\d+):(\d+)/);
+    // "HH:MM〜HH:MM" 形式を解析（28:00 等の日跨ぎ表記も正しく処理）
+    const m = e.time.match(/(\d+):(\d+)[^0-9]+(\d+):(\d+)/);
     if (m) {
-      startH = parseInt(m[1]) + parseInt(m[2])/60;
-      endH   = parseInt(m[3]) + parseInt(m[4])/60;
+      startH = _parseTimeToHour(m[1], m[2]);
+      endH   = _parseTimeToHour(m[3], m[4]);
     }
   } else if (e.startHour !== undefined) {
-    startH = e.startHour; endH = e.endHour || (e.startHour + 1);
+    startH = e.startHour;
+    endH   = e.endHour || (e.startHour + 1);
   } else {
-    return '';
+    return ''; // 終日イベントはここには来ない（isTimedEventで除外済み）
   }
 
   if (startH === undefined) return '';
 
-  // 日跨ぎ対応（就寝など）
+  // endH < startH は日跨ぎ → 24時まで表示
   if (endH < startH) endH = 24;
 
-  startH = Math.max(SHOW_HOURS_START, startH);
-  endH   = Math.min(SHOW_HOURS_END, endH);
-  if (endH <= startH) return '';
+  // 表示範囲にクリップ
+  const dispStart = Math.max(SHOW_HOURS_START, startH);
+  const dispEnd   = Math.min(SHOW_HOURS_END, endH);
+  if (dispEnd <= dispStart) return '';
 
-  const top  = (startH - SHOW_HOURS_START) * HOUR_H;
-  const h    = Math.max(14, (endH - startH) * HOUR_H - 1);
-  const col  = _weeklyGetColorLight(e);
-  const label = e.title.length > 12 ? e.title.slice(0,11)+'…' : e.title;
-  const startStr = `${String(Math.floor(startH)).padStart(2,'0')}:${String(Math.round((startH%1)*60)).padStart(2,'0')}`;
+  const top      = (dispStart - SHOW_HOURS_START) * HOUR_H;
+  const blockH   = Math.max(14, (dispEnd - dispStart) * HOUR_H - 1);
+  const col      = _weeklyGetColorLight(e);
+  const label    = e.title.length > 12 ? e.title.slice(0, 11) + '…' : e.title;
+  const startStr = `${String(Math.floor(startH % 24)).padStart(2,'0')}:${String(Math.round((startH % 1) * 60)).padStart(2,'0')}`;
 
-  return `<div style="position:absolute;top:${top}px;left:1px;right:1px;height:${h}px;background:${col.bg};border:1px solid ${col.border};border-radius:3px;padding:1px 3px;overflow:hidden;z-index:2;" title="${e.title}">
+  return `<div style="position:absolute;top:${top}px;left:1px;right:1px;height:${blockH}px;background:${col.bg};border:1px solid ${col.border};border-radius:3px;padding:1px 3px;overflow:hidden;z-index:2;" title="${e.title}（${startStr}〜）">
     <div style="font-size:0.52rem;color:${col.border};font-family:monospace;">${startStr}</div>
     <div style="font-size:0.6rem;color:${col.text};line-height:1.2;font-weight:500;">${esc(label)}</div>
   </div>`;
@@ -11554,40 +11641,75 @@ function _weeklyGetColor(e) {
   return _weeklyGetColorLight(e);
 }
 
-// 週報 印刷/PDF
+// 週報 印刷/PDF — 新ウィンドウで完全独立HTML生成
 window.calWeeklyPrint = function() {
-  const area    = document.getElementById('weekly-print-area');
-  const content = document.getElementById('weekly-print-content');
-  const rangeEl = document.getElementById('weekly-range-label');
-  if (!area || !content) return;
+  const rangeEl  = document.getElementById('weekly-range-label');
+  const gridEl   = document.getElementById('weekly-grid');
+  const alldayEl = document.getElementById('weekly-allday-row');
+  const sumEl    = document.getElementById('weekly-summary-row');
+  const range    = rangeEl?.textContent || '';
 
-  const range      = rangeEl?.textContent || '';
-  const gridHtml   = document.getElementById('weekly-grid')?.outerHTML || '';
-  const alldayHtml = document.getElementById('weekly-allday-row')?.innerHTML || '';
-  const sumHtml    = document.getElementById('weekly-summary-row')?.innerHTML || '';
+  // グリッドのHTMLをインライン化
+  const gridHtml   = gridEl   ? gridEl.outerHTML   : '';
+  const alldayHtml = alldayEl ? alldayEl.innerHTML : '';
+  const sumHtml    = sumEl    ? sumEl.innerHTML    : '';
 
-  content.innerHTML = `
-    <div style="background:#ffffff;color:#111;font-family:'Noto Sans JP',sans-serif;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:2px solid #5B8DD9;margin-bottom:8px;">
-        <div style="font-size:15px;font-weight:700;color:#1a3a70;">📓 週報</div>
-        <div style="font-size:11px;color:#555;">${range}</div>
-        <div style="font-size:10px;color:#aaa;">${new Date().toLocaleDateString('ja-JP')}</div>
-      </div>
-      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:4px;margin-bottom:6px;font-size:10px;color:#666;">
-        <b>終日予定：</b>${alldayHtml}
-      </div>
-      <div style="overflow:auto;background:#ffffff;">${gridHtml}</div>
-      <div style="margin-top:8px;background:#fafafa;border:1px solid #e0e0e0;border-radius:4px;padding:4px;">
-        <div style="font-size:10px;color:#555;font-weight:700;margin-bottom:4px;">📊 日別サマリー（睡眠・食事）</div>
-        <div style="overflow:auto;">${sumHtml}</div>
-      </div>
-    </div>`;
+  const printHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>週報 ${range}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#ffffff !important; color:#111111 !important; font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif; padding:8mm 10mm; }
+  .header { display:flex; justify-content:space-between; align-items:center; padding-bottom:6px; border-bottom:2px solid #5B8DD9; margin-bottom:10px; }
+  .title { font-size:15px; font-weight:700; color:#1a3a70; }
+  .range { font-size:11px; color:#555; }
+  .date-str { font-size:10px; color:#aaa; }
+  .section-label { font-size:10px; font-weight:700; color:#555; padding:4px 0; margin-bottom:4px; border-bottom:1px solid #eee; }
+  .allday-wrap { background:#f9f9f9; border:1px solid #e0e0e0; border-radius:3px; padding:4px; margin-bottom:8px; }
+  .grid-wrap { overflow:auto; background:#ffffff; }
+  .summary-wrap { margin-top:8px; background:#fafafa; border:1px solid #e0e0e0; border-radius:3px; padding:4px; }
+  .footer { margin-top:8px; font-size:9px; color:#aaa; text-align:right; }
+  @media print {
+    body { padding:5mm 8mm; }
+    .no-print { display:none !important; }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">📓 週報</div>
+  <div class="range">${range}</div>
+  <div class="date-str">${new Date().toLocaleDateString('ja-JP')}</div>
+</div>
+<div class="allday-wrap">
+  <div class="section-label">📌 終日予定</div>
+  ${alldayHtml}
+</div>
+<div class="grid-wrap">
+  ${gridHtml}
+</div>
+<div class="summary-wrap">
+  <div class="section-label">📊 日別サマリー（睡眠・食事）</div>
+  ${sumHtml}
+</div>
+<div class="footer">kouki-app 週報 ／ ${new Date().toLocaleDateString('ja-JP')}</div>
+<div class="no-print" style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;">
+  <button onclick="window.print()" style="padding:8px 20px;background:#5B8DD9;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;">🖨️ 印刷 / PDFで保存</button>
+  <button onclick="window.close()" style="padding:8px 16px;background:#eee;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;">✕ 閉じる</button>
+</div>
+</body>
+</html>`;
 
-  // 全要素を白固定に
-  area.style.background = '#ffffff';
-  area.style.color = '#111';
-  area.style.display = 'block';
-  area.scrollTop = 0;
+  const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+  if (w) {
+    w.document.write(printHtml);
+    w.document.close();
+  } else {
+    alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+  }
 };
 
 // ════ 出発前チェックリスト ════
