@@ -2526,13 +2526,15 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <button onclick="alcChangeMonth(1)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--accent);padding:4px 10px;border-radius:8px;">›</button>
     </div>
 
-    <!-- 月間サマリー -->
+    <!-- 月間サマリー（拡張版） -->
     <div class="card" style="margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;" id="alc-summary">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px;" id="alc-summary">
         <div><div style="font-size:0.68rem;color:var(--muted2);">飲んだ日</div><div id="alc-sum-days" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:var(--accent);">0</div><div style="font-size:0.65rem;color:var(--muted);">日</div></div>
         <div><div style="font-size:0.68rem;color:var(--muted2);">休肝日</div><div id="alc-sum-rest" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:#7A9E7E;">0</div><div style="font-size:0.65rem;color:var(--muted);">日</div></div>
         <div><div style="font-size:0.68rem;color:var(--muted2);">合計量</div><div id="alc-sum-total" style="font-family:'DM Mono',monospace;font-size:1.4rem;color:#E8B84B;">0</div><div style="font-size:0.65rem;color:var(--muted);">mL</div></div>
       </div>
+      <!-- 休肝日ストリーク -->
+      <div id="alc-streak-row" style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap;justify-content:center;"></div>
     </div>
 
     <!-- カレンダー -->
@@ -2540,15 +2542,37 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="alc-cal-grid"></div>
     </div>
 
+    <!-- 純アルコール量グラフ -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);">📊 純アルコール量グラフ</div>
+        <div style="display:flex;gap:5px;">
+          <button id="alc-chart-week-btn" onclick="alcChartMode('week')"
+            style="font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#0f0f0f;cursor:pointer;">週</button>
+          <button id="alc-chart-month-btn" onclick="alcChartMode('month')"
+            style="font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);background:none;color:var(--muted2);cursor:pointer;">月</button>
+        </div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--muted2);margin-bottom:6px;">純アルコール(g) = 量(mL) × 度数(%) × 0.8　｜　─ 赤線：目安20g/日</div>
+      <canvas id="alc-pure-chart" style="width:100%;max-height:180px;"></canvas>
+      <div id="alc-pure-summary" style="font-size:0.72rem;color:var(--muted2);margin-top:8px;text-align:center;"></div>
+    </div>
+
+    <!-- 傾向分析 -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);margin-bottom:10px;">🔍 飲み方の傾向分析</div>
+      <div id="alc-trend-analysis" style="font-size:0.8rem;color:var(--text);line-height:1.9;"></div>
+    </div>
+
     <!-- アルコール分解シミュレーター -->
     <div class="card" style="margin-bottom:14px;" id="alc-sim-card">
+      <!-- 翌日シフト警告 -->
+      <div id="alc-shift-warning" style="display:none;background:rgba(192,96,96,0.08);border:1px solid rgba(192,96,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.78rem;color:#c06060;line-height:1.6;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);">🔬 アルコール分解シミュレーター</div>
         <button onclick="alcSimToggleSettings()" id="alc-sim-gear"
           style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;">⚙️ 体重/性別</button>
       </div>
-
-      <!-- 体重・性別設定（折りたたみ） -->
       <div id="alc-sim-settings" style="display:none;background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div>
@@ -2568,11 +2592,38 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
         </div>
         <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;">※ Widmark式による概算。個人差があります</div>
       </div>
-
-      <!-- シミュレーション結果エリア -->
       <div id="alc-sim-result">
         <div style="text-align:center;color:var(--muted2);font-size:0.82rem;padding:12px 0;">
           今日の記録を追加するとシミュレーションが表示されます
+        </div>
+      </div>
+    </div>
+
+    <!-- プリセット（よく飲むお酒） -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);">⭐ よく飲むお酒（プリセット）</div>
+        <button onclick="alcPresetAdd()" style="font-size:0.72rem;padding:4px 10px;background:rgba(200,169,110,0.1);border:1px solid var(--accent);border-radius:12px;color:var(--accent);cursor:pointer;">＋ 追加</button>
+      </div>
+      <div id="alc-preset-grid" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <!-- プリセット追加フォーム -->
+      <div id="alc-preset-form" style="display:none;background:var(--surface2);border-radius:10px;padding:10px;margin-top:8px;">
+        <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:8px;">プリセットを追加</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <input type="text" id="alc-preset-name" placeholder="名前（例：缶ビール）" maxlength="20"
+            style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.85rem;outline:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <input type="text" id="alc-preset-type" placeholder="種類" maxlength="10"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;color:var(--text);font-size:0.82rem;outline:none;">
+            <input type="number" id="alc-preset-vol" placeholder="mL" min="1"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;color:var(--text);font-size:0.82rem;outline:none;">
+            <input type="number" id="alc-preset-pct" placeholder="度数%" step="0.1" min="0"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;color:var(--text);font-size:0.82rem;outline:none;">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="alcPresetSave()" style="flex:1;padding:8px;background:var(--accent);border:none;border-radius:8px;color:#0f0f0f;font-size:0.82rem;cursor:pointer;font-weight:700;">保存</button>
+            <button onclick="document.getElementById('alc-preset-form').style.display='none'" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--muted2);font-size:0.82rem;cursor:pointer;">✕</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2588,19 +2639,16 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <div class="card" style="margin-bottom:14px;">
         <div style="font-family:'Shippori Mincho',serif;font-size:0.9rem;color:var(--accent);margin-bottom:12px;">🍺 記録を追加</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <!-- 日付 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">日付</div>
             <input type="date" id="alc-date"
               style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:0.9rem;outline:none;">
           </div>
-          <!-- 時刻 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">時刻（任意）</div>
             <input type="time" id="alc-time"
               style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:0.9rem;outline:none;">
           </div>
-          <!-- 種類 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">種類</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="alc-type-btns">
@@ -2614,7 +2662,6 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
             <input type="text" id="alc-type-custom" placeholder="または直接入力"
               style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
           </div>
-          <!-- 量 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">量（mL）</div>
             <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
@@ -2625,21 +2672,22 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
               <button class="alc-vol-btn" data-vol="300" onclick="alcSetVol(this)">300</button>
             </div>
             <input type="number" id="alc-vol" placeholder="mL" min="1" max="5000"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;"
+              oninput="alcUpdatePureAlert()">
           </div>
-          <!-- アルコール度数 -->
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">アルコール度数（%・任意）</div>
             <input type="number" id="alc-pct" placeholder="例：5" min="0" max="100" step="0.1"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;">
+              style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.9rem;outline:none;"
+              oninput="alcUpdatePureAlert()">
           </div>
-          <!-- メモ -->
+          <!-- 純アルコール上限アラート -->
+          <div id="alc-pure-alert" style="display:none;border-radius:8px;padding:8px 12px;font-size:0.78rem;line-height:1.6;"></div>
           <div>
             <div style="font-size:0.72rem;color:var(--muted2);margin-bottom:4px;">メモ（任意）</div>
             <input type="text" id="alc-memo" placeholder="場所、感想など" maxlength="50"
               style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;">
           </div>
-          <!-- ボタン -->
           <div style="display:flex;gap:8px;">
             <button onclick="alcSave()"
               style="flex:1;padding:11px;background:var(--accent);border:none;border-radius:10px;color:#0f0f0f;font-family:'Shippori Mincho',serif;font-size:0.95rem;cursor:pointer;font-weight:700;">
@@ -2656,7 +2704,10 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
     </div>
 
     <!-- 記録リスト -->
-    <div class="sec-title" style="margin-bottom:10px;">📋 今月の記録</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-title" style="margin-bottom:0;">📋 今月の記録</div>
+      <button onclick="alcPrintReport()" style="font-size:0.7rem;padding:4px 10px;background:rgba(91,141,217,0.1);border:1px solid #5B8DD9;border-radius:12px;color:#5B8DD9;cursor:pointer;">📄 月次レポート</button>
+    </div>
     <div id="alc-list" style="display:flex;flex-direction:column;gap:8px;"></div>
 
   </div>
@@ -13625,7 +13676,418 @@ function renderAlcSummary() {
   if (sr) sr.textContent = restDays;
   if (st) st.textContent = totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'L' : totalVol;
   if (st) st.nextElementSibling.textContent = totalVol >= 1000 ? '' : 'mL';
+
+  // ── 休肝日ストリーク ──
+  _renderAlcStreak();
+
+  // ── グラフ・分析・シフト警告 ──
+  _renderAlcPureChart(_alcChartMode || 'week');
+  _renderAlcTrend();
+  _renderAlcShiftWarning();
+  _renderAlcPresets();
 }
+
+let _alcChartMode = 'week';
+let _alcChartInst = null;
+const ALC_PRESET_LS = 'kouki_alc_presets';
+
+// ── ① 休肝日ストリーク ──
+function _renderAlcStreak() {
+  const el = document.getElementById('alc-streak-row');
+  if (!el) return;
+
+  const today = toDateStr(new Date());
+  const drinkDates = new Set(_alcRecords.map(r => r.date).filter(Boolean));
+
+  // 現在の連続休肝日数（今日から過去へ）
+  let curStreak = 0;
+  {
+    const d = new Date(); d.setHours(0,0,0,0);
+    while (true) {
+      const ds = toDateStr(d);
+      if (drinkDates.has(ds)) break;
+      curStreak++;
+      d.setDate(d.getDate() - 1);
+      if (curStreak > 365) break;
+    }
+  }
+
+  // 今月の最長休肝連続
+  const prefix = _alcYear + '-' + String(_alcMonth + 1).padStart(2,'0');
+  const daysInMonth = new Date(_alcYear, _alcMonth + 1, 0).getDate();
+  let maxStreak = 0, tmpStreak = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${_alcYear}-${String(_alcMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if (!drinkDates.has(ds)) { tmpStreak++; maxStreak = Math.max(maxStreak, tmpStreak); }
+    else tmpStreak = 0;
+  }
+
+  const badge = curStreak >= 7 ? '🎉' : curStreak >= 3 ? '✨' : '';
+  const streakColor = curStreak >= 7 ? '#7A9E7E' : curStreak >= 3 ? 'var(--accent)' : 'var(--muted2)';
+
+  el.innerHTML = `
+    <div style="flex:1;text-align:center;padding:6px 0;">
+      <div style="font-size:0.65rem;color:var(--muted2);">現在の連続休肝</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${streakColor};font-family:'DM Mono',monospace;">${curStreak} <span style="font-size:0.85rem;">${badge}</span></div>
+      <div style="font-size:0.62rem;color:var(--muted);">日</div>
+    </div>
+    <div style="width:1px;background:var(--border);"></div>
+    <div style="flex:1;text-align:center;padding:6px 0;">
+      <div style="font-size:0.65rem;color:var(--muted2);">今月の最長休肝</div>
+      <div style="font-size:1.3rem;font-weight:700;color:#5B8DD9;font-family:'DM Mono',monospace;">${maxStreak}</div>
+      <div style="font-size:0.62rem;color:var(--muted);">日連続</div>
+    </div>`;
+}
+
+// ── ① 純アルコール量グラフ（週/月切替） ──
+window.alcChartMode = function(mode) {
+  _alcChartMode = mode;
+  document.getElementById('alc-chart-week-btn').style.cssText =
+    mode==='week' ? 'font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#0f0f0f;cursor:pointer;'
+                  : 'font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);background:none;color:var(--muted2);cursor:pointer;';
+  document.getElementById('alc-chart-month-btn').style.cssText =
+    mode==='month' ? 'font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:#0f0f0f;cursor:pointer;'
+                   : 'font-size:0.68rem;padding:3px 9px;border-radius:12px;border:1px solid var(--border2);background:none;color:var(--muted2);cursor:pointer;';
+  _renderAlcPureChart(mode);
+};
+
+function _pureAlc(r) {
+  if (!r.vol || !r.pct) return 0;
+  return Number(r.vol) * (Number(r.pct) / 100) * 0.8;
+}
+
+function _renderAlcPureChart(mode) {
+  const ctx = document.getElementById('alc-pure-chart');
+  const sumEl = document.getElementById('alc-pure-summary');
+  if (!ctx || typeof Chart === 'undefined') return;
+
+  let labels = [], data = [], totalPure = 0;
+  const LIMIT = 20; // 1日の目安(g)
+
+  if (mode === 'week') {
+    // 直近7日
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+      const ds = toDateStr(d);
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+      labels.push((d.getMonth()+1)+'/'+d.getDate()+'('+dow+')');
+      const dayPure = _alcRecords.filter(r => r.date === ds).reduce((s,r) => s + _pureAlc(r), 0);
+      data.push(Math.round(dayPure * 10) / 10);
+      totalPure += dayPure;
+    }
+  } else {
+    // 今月の日別
+    const daysInMonth = new Date(_alcYear, _alcMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${_alcYear}-${String(_alcMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      labels.push(d + '日');
+      const dayPure = _alcRecords.filter(r => r.date === ds).reduce((s,r) => s + _pureAlc(r), 0);
+      data.push(Math.round(dayPure * 10) / 10);
+      totalPure += dayPure;
+    }
+  }
+
+  const maxVal = Math.max(...data, LIMIT * 1.5);
+  const colors = data.map(v => v > LIMIT ? 'rgba(192,96,96,0.75)' : 'rgba(122,158,126,0.75)');
+
+  if (_alcChartInst) { try { _alcChartInst.destroy(); } catch(e) {} }
+  _alcChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '純アルコール(g)', data, backgroundColor: colors, borderRadius: 4, borderSkipped: false },
+        { label: '目安20g', data: Array(labels.length).fill(LIMIT), type: 'line',
+          borderColor: 'rgba(192,96,96,0.6)', borderWidth: 1.5, borderDash: [4,3],
+          pointRadius: 0, fill: false, tension: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: Math.ceil(maxVal / 10) * 10,
+             ticks: { callback: v => v+'g', font: { size: 10 }, color: 'var(--muted2)' },
+             grid: { color: 'rgba(128,128,128,0.1)' } },
+        x: { ticks: { font: { size: 9 }, color: 'var(--muted2)', maxRotation: 45 },
+             grid: { display: false } }
+      }
+    }
+  });
+
+  // サマリー文
+  const over = data.filter(v => v > LIMIT).length;
+  const avg = data.length ? Math.round(totalPure / data.length * 10) / 10 : 0;
+  if (sumEl) {
+    const msg = mode === 'week'
+      ? `直近7日の合計：${Math.round(totalPure)}g　平均：${avg}g/日　目安超過：${over}日`
+      : `今月合計：${Math.round(totalPure)}g　平均：${avg}g/日　目安超過：${over}日`;
+    sumEl.textContent = msg;
+    sumEl.style.color = over > 0 ? '#c06060' : '#7A9E7E';
+  }
+}
+
+// ── ⑧ 傾向分析 ──
+function _renderAlcTrend() {
+  const el = document.getElementById('alc-trend-analysis');
+  if (!el) return;
+  const recs = _alcRecords.filter(r => r.vol);
+  if (recs.length < 3) { el.innerHTML = '<span style="color:var(--muted2);font-size:0.78rem;">記録が3件以上になると傾向分析が表示されます</span>'; return; }
+
+  // 曜日別
+  const dowTotals = [0,0,0,0,0,0,0], dowCounts = [0,0,0,0,0,0,0];
+  const typeMap = {};
+  const hourMap = {};
+  recs.forEach(r => {
+    if (r.date) {
+      const dow = new Date(r.date + 'T00:00:00').getDay();
+      dowTotals[dow] += Number(r.vol) || 0;
+      dowCounts[dow]++;
+    }
+    typeMap[r.type] = (typeMap[r.type] || 0) + 1;
+    if (r.time) { const h = parseInt(r.time); hourMap[h] = (hourMap[h] || 0) + 1; }
+  });
+
+  const DOW = ['日','月','火','水','木','金','土'];
+  const weekdayAvg = [1,2,3,4,5].reduce((s,d) => s + (dowTotals[d]||0), 0) / Math.max(1, [1,2,3,4,5].reduce((s,d) => s + (dowCounts[d]||0), 0));
+  const weekendAvg = [0,6].reduce((s,d) => s + (dowTotals[d]||0), 0) / Math.max(1, [0,6].reduce((s,d) => s + (dowCounts[d]||0), 0));
+
+  const topType = Object.entries(typeMap).sort((a,b) => b[1]-a[1])[0];
+  const typeTotal = Object.values(typeMap).reduce((s,v)=>s+v,0);
+  const topTypePct = Math.round((topType[1] / typeTotal) * 100);
+
+  const topHour = Object.entries(hourMap).sort((a,b) => b[1]-a[1])[0];
+  const maxDow = dowTotals.indexOf(Math.max(...dowTotals));
+
+  const items = [];
+  if (weekendAvg > 0 && weekdayAvg > 0) {
+    const ratio = Math.round(weekendAvg / weekdayAvg * 10) / 10;
+    items.push(`🗓️ 土日の飲酒量は平日の<b>${ratio}倍</b>`);
+  }
+  if (topType) items.push(`🍺 最も多く飲む種類：<b>${topType[0]}（${topTypePct}%）</b>`);
+  if (topHour) items.push(`⏰ 最も飲む時間帯：<b>${topHour[0]}〜${Number(topHour[0])+1}時</b>`);
+  if (maxDow >= 0 && dowTotals[maxDow] > 0) items.push(`📅 最も量が多い曜日：<b>${DOW[maxDow]}曜日</b>`);
+
+  // 純アルコール平均
+  const pureList = recs.filter(r => r.pct).map(r => _pureAlc(r));
+  if (pureList.length) {
+    const avgPure = Math.round(pureList.reduce((s,v)=>s+v,0) / pureList.length * 10) / 10;
+    items.push(`🔬 1回あたり平均純アルコール：<b>${avgPure}g</b>`);
+  }
+
+  el.innerHTML = items.length
+    ? items.map(s => `<div style="padding:3px 0;">▸ ${s}</div>`).join('')
+    : '<span style="color:var(--muted2);">まだ十分なデータがありません</span>';
+}
+
+// ── ⑤ 翌日シフト警告 ──
+function _renderAlcShiftWarning() {
+  const el = document.getElementById('alc-shift-warning');
+  if (!el) return;
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tStr = toDateStr(tomorrow);
+  let tShift = null;
+  if (typeof getShiftInfo === 'function') {
+    const info = getShiftInfo(tStr);
+    tShift = info.shift;
+  } else if (window.FUJIPAN_SHIFTS) {
+    tShift = window.FUJIPAN_SHIFTS[tStr];
+  }
+  if (tShift && (tShift.shiftType === '早番' || tShift.type === 'early')) {
+    const startH = parseInt((tShift.time || '06:00').split(':')[0]) || 6;
+    el.style.display = 'block';
+    el.innerHTML = `⚠️ <b>明日は早番（${tShift.time || '06:00〜'}）</b>です。飲みすぎると運転前の血中アルコール濃度が残る可能性があります。残余アルコール時刻をシミュレーターで確認してください。`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── ⑥ 純アルコール上限アラート（リアルタイム） ──
+window.alcUpdatePureAlert = function() {
+  const alertEl = document.getElementById('alc-pure-alert');
+  if (!alertEl) return;
+  const vol = parseFloat(document.getElementById('alc-vol')?.value || 0);
+  const pct = parseFloat(document.getElementById('alc-pct')?.value || 0);
+  if (!vol || !pct) { alertEl.style.display = 'none'; return; }
+
+  const thisPure = vol * (pct / 100) * 0.8;
+  const todayStr = document.getElementById('alc-date')?.value || toDateStr(new Date());
+  const alreadyPure = _alcRecords.filter(r => r.date === todayStr).reduce((s,r) => s + _pureAlc(r), 0);
+  const totalPure = alreadyPure + thisPure;
+  const pct20 = Math.round((totalPure / 20) * 100);
+  const over = totalPure > 20;
+  const warn = totalPure > 15;
+
+  alertEl.style.display = 'block';
+  alertEl.style.background = over ? 'rgba(192,96,96,0.1)' : warn ? 'rgba(232,184,75,0.1)' : 'rgba(122,158,126,0.08)';
+  alertEl.style.border = `1px solid ${over ? 'rgba(192,96,96,0.4)' : warn ? 'rgba(232,184,75,0.4)' : 'rgba(122,158,126,0.3)'}`;
+  alertEl.style.color = over ? '#c06060' : warn ? '#b07000' : '#3a7a4a';
+  alertEl.innerHTML = `${over ? '⚠️ ' : warn ? '⚡ ' : '✅ '}`
+    + `この1杯：約<b>${Math.round(thisPure*10)/10}g</b>　`
+    + `本日合計：<b>${Math.round(totalPure*10)/10}g</b>（目安20gの<b style="color:${over?'#c06060':''}">${pct20}%</b>）`
+    + (over ? '<br>⚠️ <b>厚労省の1日の適正飲酒量を超えます</b>' : '');
+};
+
+// ── ④ プリセット管理 ──
+window.alcPresetAdd = function() {
+  const f = document.getElementById('alc-preset-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+};
+
+window.alcPresetSave = function() {
+  const name = document.getElementById('alc-preset-name')?.value.trim();
+  const type = document.getElementById('alc-preset-type')?.value.trim();
+  const vol  = document.getElementById('alc-preset-vol')?.value;
+  const pct  = document.getElementById('alc-preset-pct')?.value;
+  if (!name || !type || !vol) { alert('名前・種類・量は必須です'); return; }
+  let presets = [];
+  try { presets = JSON.parse(localStorage.getItem(ALC_PRESET_LS) || '[]'); } catch {}
+  presets.push({ id: Date.now().toString(), name, type, vol: Number(vol), pct: pct ? Number(pct) : null });
+  localStorage.setItem(ALC_PRESET_LS, JSON.stringify(presets));
+  document.getElementById('alc-preset-form').style.display = 'none';
+  ['alc-preset-name','alc-preset-type','alc-preset-vol','alc-preset-pct'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  _renderAlcPresets();
+};
+
+window.alcPresetDelete = function(id) {
+  let presets = [];
+  try { presets = JSON.parse(localStorage.getItem(ALC_PRESET_LS) || '[]'); } catch {}
+  presets = presets.filter(p => p.id !== id);
+  localStorage.setItem(ALC_PRESET_LS, JSON.stringify(presets));
+  _renderAlcPresets();
+};
+
+window.alcPresetUse = function(id) {
+  let presets = [];
+  try { presets = JSON.parse(localStorage.getItem(ALC_PRESET_LS) || '[]'); } catch {}
+  const p = presets.find(x => x.id === id);
+  if (!p) return;
+  // フォームを開いてプリセット値をセット
+  if (!_alcFormOpen) alcToggleForm();
+  const typeCustom = document.getElementById('alc-type-custom');
+  const volEl = document.getElementById('alc-vol');
+  const pctEl = document.getElementById('alc-pct');
+  document.querySelectorAll('.alc-type-btn').forEach(b => b.classList.remove('selected'));
+  const typeBtn = document.querySelector(`.alc-type-btn[data-type="${p.type}"]`);
+  if (typeBtn) { typeBtn.classList.add('selected'); _alcSelectedType = p.type; if (typeCustom) typeCustom.value = ''; }
+  else { _alcSelectedType = ''; if (typeCustom) typeCustom.value = p.type; }
+  if (volEl) volEl.value = p.vol;
+  if (pctEl) pctEl.value = p.pct || '';
+  alcUpdatePureAlert();
+  // スクロール
+  document.getElementById('alc-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function _renderAlcPresets() {
+  const el = document.getElementById('alc-preset-grid');
+  if (!el) return;
+  let presets = [];
+  try { presets = JSON.parse(localStorage.getItem(ALC_PRESET_LS) || '[]'); } catch {}
+  if (!presets.length) {
+    el.innerHTML = '<div style="font-size:0.75rem;color:var(--muted2);text-align:center;padding:8px 0;">プリセットがありません。よく飲むお酒を登録すると1タップで記録できます</div>';
+    return;
+  }
+  el.innerHTML = presets.map(p => {
+    const pureG = p.pct ? Math.round(p.vol * (p.pct/100) * 0.8 * 10) / 10 : null;
+    const typeIcon = { ビール:'🍺', チューハイ:'🥤', 日本酒:'🍶', ワイン:'🍷', 焼酎:'🥃', その他:'🍸' }[p.type] || '🍶';
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px;">
+      <span style="font-size:1.3rem;">${typeIcon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.85rem;font-weight:600;color:var(--text);">${esc(p.name)}</div>
+        <div style="font-size:0.72rem;color:var(--accent);">${p.type}　${p.vol}mL${p.pct ? '　'+p.pct+'%' : ''}${pureG ? '　純アルコール約'+pureG+'g' : ''}</div>
+      </div>
+      <button onclick="alcPresetUse('${p.id}')" style="padding:6px 12px;background:var(--accent);border:none;border-radius:8px;color:#0f0f0f;font-size:0.78rem;cursor:pointer;white-space:nowrap;font-weight:700;">記録</button>
+      <button onclick="alcPresetDelete('${p.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.82rem;padding:4px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ── ⑦ 月次レポートPDF ──
+window.alcPrintReport = function() {
+  const prefix = _alcYear + '-' + String(_alcMonth + 1).padStart(2, '0');
+  const monthRecs = _alcRecords.filter(r => r.date && r.date.startsWith(prefix));
+  const drinkDays = new Set(monthRecs.map(r => r.date)).size;
+  const daysInMonth = new Date(_alcYear, _alcMonth + 1, 0).getDate();
+  const restDays  = daysInMonth - drinkDays;
+  const totalVol  = monthRecs.reduce((s,r) => s + (Number(r.vol)||0), 0);
+  const totalPure = monthRecs.reduce((s,r) => s + _pureAlc(r), 0);
+  const avgPure   = drinkDays > 0 ? Math.round(totalPure / drinkDays * 10) / 10 : 0;
+  const overDays  = [...new Set(monthRecs.map(r => r.date))].filter(d => {
+    const dp = monthRecs.filter(r => r.date === d).reduce((s,r)=>s+_pureAlc(r),0);
+    return dp > 20;
+  }).length;
+
+  // 曜日別集計
+  const DOW = ['日','月','火','水','木','金','土'];
+  const dowData = DOW.map((_, i) => {
+    const dayRecs = monthRecs.filter(r => r.date && new Date(r.date+'T00:00:00').getDay() === i);
+    return { pure: dayRecs.reduce((s,r)=>s+_pureAlc(r),0), count: new Set(dayRecs.map(r=>r.date)).size };
+  });
+
+  // 日別詳細（最大30件）
+  const groups = {};
+  monthRecs.forEach(r => { if (!groups[r.date]) groups[r.date]=[]; groups[r.date].push(r); });
+  const detailRows = Object.keys(groups).sort().map(dateStr => {
+    const d = new Date(dateStr+'T00:00:00');
+    const dow = DOW[d.getDay()];
+    const recs = groups[dateStr];
+    const dp = recs.reduce((s,r)=>s+_pureAlc(r),0);
+    return `<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid #f5f0ea;font-size:11px;">${dateStr.slice(5)}（${dow}）</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f5f0ea;font-size:11px;">${recs.map(r=>`${r.type||''}${r.vol?r.vol+'mL':''}${r.pct?'/'+r.pct+'%':''}`).join('、')}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f5f0ea;font-size:11px;text-align:right;font-family:monospace;${dp>20?'color:#c62828;font-weight:700':''}">${dp>0?Math.round(dp*10)/10+'g':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>飲酒月次レポート ${_alcYear}年${_alcMonth+1}月</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#fff !important; color:#111 !important; font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif; padding:12mm 14mm; font-size:13px; }
+  h1 { font-size:18px; color:#1a1a1a; border-bottom:3px solid #7A9E7E; padding-bottom:8px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end; }
+  h2 { font-size:13px; color:#1a1a1a; border-left:4px solid #7A9E7E; padding-left:8px; margin:16px 0 8px; }
+  .kpi { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .kpi-card { background:#f8fff8; border:1px solid #c5e0c5; border-radius:8px; padding:10px; text-align:center; }
+  .kpi-label { font-size:10px; color:#7A9E7E; margin-bottom:3px; }
+  .kpi-value { font-size:18px; font-weight:700; color:#1a1a1a; font-family:monospace; }
+  table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  th { background:#f0f8f0; padding:6px 8px; font-size:11px; color:#1a1a1a; text-align:left; border-bottom:2px solid #7A9E7E; }
+  .note { background:#fff8f0; border:1px solid #ffe082; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:#8a6000; line-height:1.7; }
+  .footer { font-size:9px; color:#aaa; text-align:right; border-top:1px solid #eee; padding-top:6px; margin-top:12px; }
+  .no-print { text-align:center; margin-top:14px; }
+  @media print { .no-print { display:none !important; } * { -webkit-print-color-adjust:exact; print-color-adjust:exact; } body { padding:8mm 10mm; } }
+</style></head><body>
+<h1><span>飲酒月次レポート</span><span style="font-size:12px;color:#777;">${_alcYear}年${_alcMonth+1}月</span></h1>
+<div class="kpi">
+  <div class="kpi-card"><div class="kpi-label">飲んだ日</div><div class="kpi-value">${drinkDays}</div><div style="font-size:10px;color:#888;">日</div></div>
+  <div class="kpi-card"><div class="kpi-label">休肝日</div><div class="kpi-value" style="color:#7A9E7E;">${restDays}</div><div style="font-size:10px;color:#888;">日（${Math.round(restDays/daysInMonth*100)}%）</div></div>
+  <div class="kpi-card"><div class="kpi-label">純アルコール合計</div><div class="kpi-value" style="color:${totalPure>600?'#c62828':'#1a1a1a'}">${Math.round(totalPure)}g</div><div style="font-size:10px;color:#888;">目安600g/月</div></div>
+  <div class="kpi-card"><div class="kpi-label">目安超過日</div><div class="kpi-value" style="color:${overDays>0?'#c62828':'#7A9E7E'}">${overDays}</div><div style="font-size:10px;color:#888;">日（>20g/日）</div></div>
+</div>
+${overDays > 5 ? `<div class="note">⚠️ <b>注意</b>：目安（20g/日）を超えた日が${overDays}日あります。健康のために飲酒量の見直しを検討してください。</div>` : ''}
+<h2>曜日別 飲酒状況</h2>
+<table><thead><tr><th>曜日</th><th style="text-align:right">飲んだ回数</th><th style="text-align:right">純アルコール合計</th><th style="text-align:right">1回平均</th></tr></thead>
+<tbody>${DOW.map((d,i) => `<tr><td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:12px;">${d}曜日</td>
+  <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;">${dowData[i].count}日</td>
+  <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-family:monospace;">${Math.round(dowData[i].pure)}g</td>
+  <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-family:monospace;">${dowData[i].count?Math.round(dowData[i].pure/dowData[i].count*10)/10+'g':'—'}</td>
+</tr>`).join('')}</tbody></table>
+<h2>日別 詳細記録</h2>
+<table><thead><tr><th>日付</th><th>内容</th><th style="text-align:right">純アルコール</th></tr></thead>
+<tbody>${detailRows}</tbody></table>
+<div class="footer">有馬功稀 飲酒月次レポート ／ ${new Date().toLocaleDateString('ja-JP')} 作成 ／ kouki-app</div>
+<div class="no-print">
+  <button onclick="window.print()" style="padding:10px 24px;background:#7A9E7E;border:none;border-radius:8px;color:white;cursor:pointer;font-size:14px;margin-right:8px;">🖨️ 印刷 / PDFで保存</button>
+  <button onclick="window.close()" style="padding:10px 16px;background:#eee;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:14px;">✕ 閉じる</button>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=720,scrollbars=yes');
+  if (w) { w.document.write(html); w.document.close(); }
+  else alert('ポップアップがブロックされました。');
+};
 
 // ── リスト描画 ──
 function renderAlcList() {
