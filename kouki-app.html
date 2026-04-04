@@ -3511,12 +3511,27 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
     <!-- 最終残高カード -->
     <div style="background:linear-gradient(135deg,#7A9E7E22,#5B8DD922);border:2px solid #7A9E7E;border-radius:12px;padding:14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:1.2rem">💰</span>
-        <span style="font-size:0.75rem;color:#9A8070;font-family:'Zen Maru Gothic',sans-serif">今月の最終残高（繰越対象）</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1.2rem">💰</span>
+          <span style="font-size:0.75rem;color:#9A8070;font-family:'Zen Maru Gothic',sans-serif">今月の最終残高（繰越対象）</span>
+        </div>
+        <button onclick="toggleFinalBalEdit()" id="final-bal-edit-btn" style="background:none;border:none;font-size:0.75rem;color:#5B8DD9;cursor:pointer;text-decoration:underline;font-family:'Zen Maru Gothic',sans-serif">修正</button>
       </div>
       <div id="bsum-final-balance" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.6rem;font-weight:700;color:#7A9E7E">—</div>
-      <div style="font-size:0.7rem;color:#9A8070;margin-top:4px">繰越 + 月収 − 実績支出で自動算出</div>
+      <div style="font-size:0.7rem;color:#9A8070;margin-top:4px" id="bsum-final-balance-note">繰越 + 月収 − 実績支出で自動算出</div>
+      <!-- 手動修正フォーム -->
+      <div id="final-bal-edit-form" style="display:none;margin-top:10px;background:rgba(255,255,255,0.6);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:0.72rem;color:#9A8070;margin-bottom:6px;font-family:'Zen Maru Gothic',sans-serif;">💡 実際の残高に合わせて手動で修正できます</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:0.9rem;color:#9A8070">¥</span>
+          <input id="final-bal-input" type="number" placeholder="例：25000"
+            style="flex:1;border:2px solid #7A9E7E;border-radius:8px;padding:7px 10px;font-size:0.9rem;outline:none;font-family:'Zen Maru Gothic',sans-serif;background:white">
+          <button onclick="saveFinalBalManual()" style="padding:7px 14px;background:#7A9E7E;color:white;border:none;border-radius:8px;font-family:'Zen Maru Gothic',sans-serif;font-size:0.82rem;cursor:pointer">保存</button>
+          <button onclick="resetFinalBalManual()" style="padding:7px 10px;background:#F5E6D0;color:#9A8070;border:none;border-radius:8px;font-size:0.78rem;cursor:pointer">自動に戻す</button>
+          <button onclick="toggleFinalBalEdit()" style="padding:7px 8px;background:#eee;color:#9A8070;border:none;border-radius:8px;font-size:0.78rem;cursor:pointer">✕</button>
+        </div>
+      </div>
       <button onclick="applyFinalBalanceToNext()" id="carry-over-btn" style="display:none;margin-top:10px;width:100%;padding:9px;background:#7A9E7E;color:white;border:none;border-radius:10px;font-family:'Zen Maru Gothic',sans-serif;font-size:0.85rem;cursor:pointer;letter-spacing:0.03em">
         📦 来月の「先月の残高」に反映する
       </button>
@@ -11308,16 +11323,82 @@ window.bcToggleAdmin = function() {
   renderBcGrid(); // 削除ボタン表示切替
 };
 
-// ── ファイルアップロード ──
+// ── ファイルアップロード（Firebase Storage または Base64ローカル保存） ──
 window.bcUploadFiles = async function(input) {
   if (!input.files.length) return;
   const status = document.getElementById('bc-upload-status');
-  if (!window.mfs || !window.mdb) {
-    if (status) { status.style.color='var(--red)'; status.textContent='Firebase未接続。ネットワークを確認してください'; }
+
+  const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+  const files = Array.from(input.files);
+
+  // サイズチェック
+  const oversized = files.filter(f => f.size > MAX_SIZE);
+  if (oversized.length) {
+    if (status) { status.style.color='var(--red)'; status.textContent=`⚠️ ${oversized.map(f=>f.name).join(', ')} は20MBを超えています`; }
+    input.value = '';
     return;
   }
 
-  const files = Array.from(input.files);
+  // Firebase接続待機（最大3秒）
+  let useFirebase = false;
+  if (!window.mfs || !window.mdb) {
+    if (status) { status.style.color='var(--muted2)'; status.textContent='⏳ Firebase接続待機中...'; }
+    let waited = 0;
+    while ((!window.mfs || !window.mdb) && waited < 30) {
+      await new Promise(r => setTimeout(r, 100));
+      waited++;
+      if (!window.mfs && window._famApp) {
+        try { window.mfs = window._famApp.storage(); } catch(e) {}
+      }
+    }
+  }
+  useFirebase = !!(window.mfs && window.mdb);
+
+  if (!useFirebase) {
+    // ── フォールバック：Base64でlocalStorageに保存 ──
+    if (status) { status.style.color='var(--muted2)'; status.textContent='⏳ ローカル保存中...'; }
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (status) status.textContent = `⏳ ローカル保存中 (${i+1}/${files.length}) ${file.name}`;
+      try {
+        const base64 = await _fileToBase64(file);
+        const id = Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
+        const record = {
+          id,
+          title: file.name.replace(/\.[^.]+$/, ''),
+          url: base64,       // data:audio/...;base64,... 形式
+          path: null,        // Storageパスなし
+          size: file.size,
+          uploadedAt: Date.now(),
+          local: true,       // ローカル保存フラグ
+        };
+        _bcItems.push(record);
+        // localStorageに保存（容量に注意）
+        try {
+          localStorage.setItem(BC_LS_KEY, JSON.stringify(_bcItems));
+        } catch(storageErr) {
+          // localStorage容量超過時は最古を1件削除して再試行
+          if (_bcItems.length > 1) {
+            _bcItems.shift();
+            localStorage.setItem(BC_LS_KEY, JSON.stringify(_bcItems));
+          }
+        }
+      } catch(e) {
+        console.error('bc local save error', e);
+        if (status) { status.style.color='var(--red)'; status.textContent='エラー: ' + file.name; }
+      }
+    }
+    renderBcGrid();
+    if (status) {
+      status.style.color='var(--green)';
+      status.textContent='✅ ローカル保存完了（Firebaseに接続したとき自動同期）';
+      setTimeout(() => { if(status) status.textContent=''; }, 3000);
+    }
+    input.value = '';
+    return;
+  }
+
+  // ── Firebase Storage アップロード ──
   if (status) { status.style.color='var(--muted2)'; status.textContent='⏳ アップロード中 (0/' + files.length + ')'; }
 
   for (let i = 0; i < files.length; i++) {
@@ -11333,7 +11414,7 @@ window.bcUploadFiles = async function(input) {
       const url = await ref.getDownloadURL();
 
       const record = {
-        title: file.name.replace(/\.[^.]+$/, ''), // 拡張子除去
+        title: file.name.replace(/\.[^.]+$/, ''),
         url,
         path,
         size: file.size,
@@ -11342,13 +11423,23 @@ window.bcUploadFiles = async function(input) {
       await window.mdb.ref(BC_DB_KEY + '/' + id).set(record);
     } catch(e) {
       console.error('bc upload error', e);
-      if (status) { status.style.color='var(--red)'; status.textContent='エラー: ' + file.name; }
+      if (status) { status.style.color='var(--red)'; status.textContent='エラー: ' + file.name + ' — ' + (e.message || ''); }
     }
   }
 
-  if (status) { status.style.color='var(--green)'; status.textContent='✅ アップロード完了'; setTimeout(()=>{status.textContent='';},2500); }
+  if (status) { status.style.color='var(--green)'; status.textContent='✅ アップロード完了'; setTimeout(()=>{if(status)status.textContent='';},2500); }
   input.value = '';
 };
+
+// FileをBase64データURLに変換
+function _fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 // ── グリッド描画 ──
 function renderBcGrid() {
@@ -13940,6 +14031,7 @@ function initMusukoFirebase() {
     // famApp.database() を使う（firebase.database(famApp)ではなく）
     window.mdb = famApp.database();
     _mstorage = famApp.storage();
+    window.mfs = _mstorage; // broadcast・PDF等のStorage機能に共有
     const FB_ROOT='family-app-61993';
     window.FB_SPENDING=`${FB_ROOT}/spending`;
     window.FB_BUDGET=`${FB_ROOT}/budget_settings`;
@@ -14163,6 +14255,72 @@ window.applyFinalBalanceToNext = function() {
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
   }
   showMToast(`${nextY}年${nextM+1}月に繰越¥${finalBal.toLocaleString()}を設定しました`);
+};
+
+// ── 最終残高の手動修正 ──
+const LS_FINAL_BAL_MANUAL = 'fam_final_bal_manual_v1';
+
+window.toggleFinalBalEdit = function() {
+  const form = document.getElementById('final-bal-edit-form');
+  if (!form) return;
+  const show = form.style.display !== 'flex';
+  form.style.display = show ? 'flex' : 'none';
+  form.style.flexDirection = 'column';
+  if (show) {
+    // 現在の値をプリセット
+    const el = document.getElementById('bsum-final-balance');
+    const inp = document.getElementById('final-bal-input');
+    if (inp && el && el.dataset.value !== '') {
+      inp.value = el.dataset.value;
+    }
+    if (inp) inp.focus();
+  }
+};
+
+window.saveFinalBalManual = function() {
+  const inp = document.getElementById('final-bal-input');
+  const val = inp ? inp.value : '';
+  if (val === '') { showMToast && showMToast('金額を入力してください'); return; }
+  const num = parseInt(val, 10);
+  if (isNaN(num)) { showMToast && showMToast('数値を入力してください'); return; }
+
+  // 今月の手動上書きキーに保存
+  const manualKey = `${budgetYear}-${budgetMonth}`;
+  let manuals = {};
+  try { manuals = JSON.parse(localStorage.getItem(LS_FINAL_BAL_MANUAL) || '{}'); } catch {}
+  manuals[manualKey] = num;
+  localStorage.setItem(LS_FINAL_BAL_MANUAL, JSON.stringify(manuals));
+
+  // UIを即時更新
+  const el = document.getElementById('bsum-final-balance');
+  const noteEl = document.getElementById('bsum-final-balance-note');
+  const carryBtn = document.getElementById('carry-over-btn');
+  if (el) {
+    el.textContent = (num >= 0 ? '+' : '') + `¥${num.toLocaleString()}`;
+    el.style.color = num >= 0 ? '#7A9E7E' : '#C0675A';
+    el.dataset.value = num;
+  }
+  if (noteEl) noteEl.textContent = '✏️ 手動修正済み（繰越 + 月収 − 実績支出 の自動算出を上書き）';
+  if (carryBtn) carryBtn.style.display = 'block';
+
+  // フォームを閉じる
+  const form = document.getElementById('final-bal-edit-form');
+  if (form) form.style.display = 'none';
+  showMToast && showMToast(`最終残高を¥${num.toLocaleString()}に修正しました`);
+};
+
+window.resetFinalBalManual = function() {
+  // 手動修正をクリアして自動算出に戻す
+  const manualKey = `${budgetYear}-${budgetMonth}`;
+  let manuals = {};
+  try { manuals = JSON.parse(localStorage.getItem(LS_FINAL_BAL_MANUAL) || '{}'); } catch {}
+  delete manuals[manualKey];
+  localStorage.setItem(LS_FINAL_BAL_MANUAL, JSON.stringify(manuals));
+
+  const form = document.getElementById('final-bal-edit-form');
+  if (form) form.style.display = 'none';
+  showMToast && showMToast('自動算出に戻しました');
+  renderBudgetMonthly(); // 再計算
 };
 
 // 決算書PDF（新ウィンドウ・白背景固定）
