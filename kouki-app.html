@@ -3596,7 +3596,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
         <button onclick="toggleFinalBalEdit()" id="final-bal-edit-btn" style="background:none;border:none;font-size:0.75rem;color:#5B8DD9;cursor:pointer;text-decoration:underline;font-family:'Zen Maru Gothic',sans-serif">修正</button>
       </div>
       <div id="bsum-final-balance" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.6rem;font-weight:700;color:#7A9E7E">—</div>
-      <div style="font-size:0.7rem;color:#9A8070;margin-top:4px" id="bsum-final-balance-note">繰越 + 月収 − 実績支出で自動算出</div>
+      <div style="font-size:0.68rem;color:#9A8070;margin-top:4px;line-height:1.6;" id="bsum-final-balance-note">先月残高 ＋ 月収 − 支出（確定値優先）</div>
       <!-- 手動修正フォーム -->
       <div id="final-bal-edit-form" style="display:none;margin-top:10px;background:rgba(255,255,255,0.6);border-radius:8px;padding:10px 12px;">
         <div style="font-size:0.72rem;color:#9A8070;margin-bottom:6px;font-family:'Zen Maru Gothic',sans-serif;">💡 実際の残高に合わせて手動で修正できます</div>
@@ -3632,17 +3632,30 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <button onclick="budgetSettingsChangeMonth(1)" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#8B5E3C;padding:4px 10px;border-radius:8px">→</button>
     </div>
 
-    <!-- 先月の繰越（自動算出） -->
+    <!-- 先月の繰越（自動算出 + 手動修正） -->
     <div style="background:linear-gradient(135deg,#eff4fc,#f0f7ff);border:2px solid #7B9FE0;border-radius:12px;padding:12px 14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:1.1rem">📦</span>
           <span style="font-family:'Zen Maru Gothic',sans-serif;font-size:0.78rem;color:#9A8070">先月の残高（繰越）</span>
         </div>
-        <span id="budget-carry-auto-badge" style="font-size:0.6rem;display:none;background:#7B9FE0;color:white;border-radius:8px;padding:1px 7px">自動算出</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span id="budget-carry-auto-badge" style="font-size:0.6rem;display:none;background:#7B9FE0;color:white;border-radius:8px;padding:1px 7px">自動算出</span>
+          <button onclick="toggleBudgetCarryEdit()" id="budget-carry-edit-btn"
+            style="background:none;border:none;font-size:0.72rem;color:#5B8DD9;cursor:pointer;text-decoration:underline;font-family:'Zen Maru Gothic',sans-serif;">修正</button>
+        </div>
       </div>
       <div id="budget-carry-display" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.3rem;font-weight:700;color:#5B8DD9">—</div>
       <div id="budget-carry-note" style="font-size:0.68rem;color:#9A8070;margin-top:2px"></div>
+      <!-- 手動修正フォーム -->
+      <div id="budget-carry-edit-form" style="display:none;margin-top:8px;align-items:center;gap:6px;">
+        <span style="font-size:0.85rem;color:#9A8070">¥</span>
+        <input id="budget-carry-input" type="number" placeholder="例：15000"
+          style="flex:1;border:2px solid #7B9FE0;border-radius:8px;padding:6px 9px;font-size:0.88rem;outline:none;font-family:'Zen Maru Gothic',sans-serif;background:white;">
+        <button onclick="saveBudgetCarryManual()" style="padding:6px 12px;background:#5B8DD9;color:white;border:none;border-radius:8px;font-family:'Zen Maru Gothic',sans-serif;font-size:0.78rem;cursor:pointer;">保存</button>
+        <button onclick="resetBudgetCarryManual()" style="padding:6px 8px;background:#F5E6D0;color:#9A8070;border:none;border-radius:8px;font-size:0.75rem;cursor:pointer;" title="自動算出に戻す">自動</button>
+        <button onclick="toggleBudgetCarryEdit()" style="padding:6px 8px;background:#eee;color:#9A8070;border:none;border-radius:8px;font-size:0.75rem;cursor:pointer;">✕</button>
+      </div>
     </div>
 
     <!-- 月収 -->
@@ -14801,31 +14814,8 @@ function _updateKakeiboLiveActual(){
   // ── カテゴリ別 予算vs実績グラフ再描画 ──
   if(typeof _renderBudgetBarChart === 'function') _renderBudgetBarChart();
 
-  // ── 実績支出（決算タブ: bsum-actual） ──
-  const actualEl = document.getElementById('bsum-actual');
-  if(!actualEl) return;
-  const cycleItems = spendGetCycleItems(budgetYear, budgetMonth);
-  const totalActual = cycleItems.reduce((s,i)=>s+Number(i.amount),0);
-  actualEl.textContent = `¥${totalActual.toLocaleString()}`;
-
-  // ── 最終残高（bsum-final-balance）再計算 ──
-  const income = Number(getBudgetForMonth(budgetYear, budgetMonth).income||0);
-  const prevKey = `${budgetYear}-${budgetMonth}`;
-  const storedPrev = _prevBalances[prevKey];
-  const prevBal = (storedPrev!==undefined&&storedPrev!==null) ? storedPrev : null;
-  const finalBalEl = document.getElementById('bsum-final-balance');
-  const carryBtn   = document.getElementById('carry-over-btn');
-  if(finalBalEl && income > 0){
-    let manuals={};
-    try{manuals=JSON.parse(localStorage.getItem('fam_final_bal_manual_v1')||'{}');}catch{}
-    if(!manuals[prevKey]){
-      const finalBal=(prevBal!==null?prevBal:0)+income-totalActual;
-      finalBalEl.textContent=(finalBal>=0?'+':'')+`¥${finalBal.toLocaleString()}`;
-      finalBalEl.style.color=finalBal>=0?'#7A9E7E':'#C0675A';
-      finalBalEl.dataset.value=finalBal;
-      if(carryBtn) carryBtn.style.display='block';
-    }
-  }
+  // ── 決算タブ：確定入力を委譲して一元化 ──
+  if(typeof _updateBsumFinalWithConfirmed === 'function') _updateBsumFinalWithConfirmed();
 
   // ── 余剰／赤字（bsum-balance）再計算 ──
   const balEl = document.getElementById('bsum-balance');
@@ -15431,32 +15421,126 @@ window.bcatConfirmAllFromActual = function() {
 };
 
 function _updateBsumFinalWithConfirmed() {
-  const confirmed = _getConfirmedCats(budgetYear, budgetMonth);
+  const confirmed    = _getConfirmedCats(budgetYear, budgetMonth);
   const hasConfirmed = Object.keys(confirmed).length > 0;
-  if (!hasConfirmed) return;
-  const confirmedTotal = Object.values(confirmed).reduce((s, v) => s + Number(v), 0);
+  const cycleItems   = spendGetCycleItems(budgetYear, budgetMonth);
+  const totalActual  = cycleItems.reduce((s,i)=>s+Number(i.amount),0);
+
+  // 支出額：確定入力があれば確定合計、なければ実績合計
+  const confirmedTotal = hasConfirmed
+    ? Object.values(confirmed).reduce((s,v)=>s+Number(v),0)
+    : totalActual;
+  const usingConfirmed = hasConfirmed;
+
   const income  = Number(getBudgetForMonth(budgetYear, budgetMonth).income || 0);
   const prevKey = `${budgetYear}-${budgetMonth}`;
   const storedPrev = _prevBalances[prevKey];
-  const prevBal = (storedPrev !== undefined && storedPrev !== null) ? storedPrev : null;
+  const prevBal    = (storedPrev !== undefined && storedPrev !== null) ? Number(storedPrev) : 0;
+
+  // ── 最終残高 = 先月残高 + 月収 − 支出（確定 or 実績） ──
+  const finalBal = income > 0 ? prevBal + income - confirmedTotal : null;
+
+  // bsum-actual（実績支出表示）
   const actualEl = document.getElementById('bsum-actual');
-  if (actualEl) { actualEl.textContent = `¥${confirmedTotal.toLocaleString()}`; actualEl.title = '確定入力値'; }
-  if (income > 0) {
-    const finalBal = (prevBal !== null ? prevBal : 0) + income - confirmedTotal;
-    const finalBalEl = document.getElementById('bsum-final-balance');
-    const noteEl     = document.getElementById('bsum-final-balance-note');
-    let manuals = {};
-    try { manuals = JSON.parse(localStorage.getItem('fam_final_bal_manual_v1') || '{}'); } catch {}
-    if (!manuals[prevKey]) {
-      if (finalBalEl) { finalBalEl.textContent = (finalBal >= 0 ? '+' : '') + `¥${finalBal.toLocaleString()}`; finalBalEl.style.color = finalBal >= 0 ? '#7A9E7E' : '#C0675A'; finalBalEl.dataset.value = finalBal; }
-      if (noteEl) noteEl.textContent = '✅ 確定入力値で再計算（繰越 + 月収 − 確定支出合計）';
-      const carryBtn = document.getElementById('carry-over-btn');
-      if (carryBtn) carryBtn.style.display = 'block';
+  if (actualEl) {
+    actualEl.textContent = `¥${confirmedTotal.toLocaleString()}`;
+    actualEl.title = usingConfirmed ? '確定入力値' : '自動実績値';
+  }
+
+  // 最終残高
+  const finalBalEl = document.getElementById('bsum-final-balance');
+  const noteEl     = document.getElementById('bsum-final-balance-note');
+  const carryBtn   = document.getElementById('carry-over-btn');
+  let manuals = {};
+  try { manuals = JSON.parse(localStorage.getItem('fam_final_bal_manual_v1') || '{}'); } catch {}
+
+  if (!manuals[prevKey] && finalBal !== null) {
+    if (finalBalEl) {
+      finalBalEl.textContent = (finalBal >= 0 ? '+' : '') + `¥${finalBal.toLocaleString()}`;
+      finalBalEl.style.color = finalBal >= 0 ? '#7A9E7E' : '#C0675A';
+      finalBalEl.dataset.value = finalBal;
     }
-    const balEl = document.getElementById('bsum-balance');
-    if (balEl) { const bal = income - confirmedTotal; balEl.textContent = (bal >= 0 ? '+' : '') + `¥${bal.toLocaleString()}`; balEl.style.color = bal >= 0 ? '#7A9E7E' : '#C0675A'; }
+    if (noteEl) {
+      const prevStr = `繰越${prevBal>=0?'+':''}¥${prevBal.toLocaleString()}`;
+      const incStr  = income ? ` + 月収¥${income.toLocaleString()}` : '';
+      const spStr   = ` − ${usingConfirmed?'確定':'実績'}¥${confirmedTotal.toLocaleString()}`;
+      noteEl.textContent = `${prevStr}${incStr}${spStr} = ${finalBal>=0?'+':''}¥${finalBal.toLocaleString()}${usingConfirmed?' ✅確定入力':''}`;
+    }
+    if (carryBtn) carryBtn.style.display = 'block';
+  }
+
+  // 余剰／赤字
+  const balEl = document.getElementById('bsum-balance');
+  if (balEl && income) {
+    const bal = income - confirmedTotal;
+    balEl.textContent = (bal >= 0 ? '+' : '') + `¥${bal.toLocaleString()}`;
+    balEl.style.color  = bal >= 0 ? '#7A9E7E' : '#C0675A';
   }
 }
+
+// ════ 予算タブ：先月の残高 手動修正 ════
+const LS_BUDGET_CARRY_MANUAL = 'kouki_budget_carry_manual_v1';
+
+window.toggleBudgetCarryEdit = function() {
+  const form = document.getElementById('budget-carry-edit-form');
+  if (!form) return;
+  const show = form.style.display !== 'flex';
+  form.style.display = show ? 'flex' : 'none';
+  if (show) {
+    const inp = document.getElementById('budget-carry-input');
+    // 現在の先月繰越値を初期値にセット
+    let prevY=budgetSettingsYear, prevM=budgetSettingsMonth-1;
+    if(prevM<0){prevM=11;prevY--;}
+    const cur = _prevBalances[`${prevY}-${prevM}`];
+    if (inp) { inp.value = cur !== undefined ? cur : ''; inp.focus(); }
+  }
+};
+
+window.saveBudgetCarryManual = function() {
+  const inp = document.getElementById('budget-carry-input');
+  if (!inp) return;
+  const raw = inp.value;
+  const val = raw === '' ? null : parseInt(raw, 10);
+  if (raw !== '' && isNaN(val)) { showMToast && showMToast('数値を入力してください'); return; }
+
+  // 先月のキーに保存（budgetSettingsMonth の「先月」）
+  let prevY=budgetSettingsYear, prevM=budgetSettingsMonth-1;
+  if(prevM<0){prevM=11;prevY--;}
+  const key = `${prevY}-${prevM}`;
+  if (val === null) delete _prevBalances[key];
+  else _prevBalances[key] = val;
+  localStorage.setItem(LS_PREV_BALANCE, JSON.stringify(_prevBalances));
+
+  // 手動フラグも保存
+  let manuals = {};
+  try { manuals = JSON.parse(localStorage.getItem(LS_BUDGET_CARRY_MANUAL) || '{}'); } catch {}
+  if (val === null) delete manuals[key];
+  else manuals[key] = val;
+  localStorage.setItem(LS_BUDGET_CARRY_MANUAL, JSON.stringify(manuals));
+
+  toggleBudgetCarryEdit();
+  renderBudgetSettings();  // 予算タブ更新
+  renderBudgetMonthly();   // 決算タブ更新
+  _updateKakeiboLiveActual(); // 各表示更新
+  showMToast && showMToast('先月の残高を保存しました');
+};
+
+window.resetBudgetCarryManual = function() {
+  let prevY=budgetSettingsYear, prevM=budgetSettingsMonth-1;
+  if(prevM<0){prevM=11;prevY--;}
+  const key = `${prevY}-${prevM}`;
+  // 手動フラグを削除
+  let manuals = {};
+  try { manuals = JSON.parse(localStorage.getItem(LS_BUDGET_CARRY_MANUAL) || '{}'); } catch {}
+  delete manuals[key];
+  localStorage.setItem(LS_BUDGET_CARRY_MANUAL, JSON.stringify(manuals));
+  // _prevBalancesからも削除（自動計算に戻す）
+  delete _prevBalances[key];
+  localStorage.setItem(LS_PREV_BALANCE, JSON.stringify(_prevBalances));
+  toggleBudgetCarryEdit();
+  renderBudgetSettings();
+  showMToast && showMToast('自動算出に戻しました');
+};
 
 function renderBudgetYearly(){
   if(!document.getElementById('budget-year-label'))return;
