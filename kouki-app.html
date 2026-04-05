@@ -3672,12 +3672,37 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
     <!-- 予算合計サマリー -->
     <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(0,0,0,0.06);margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><div style="font-size:0.75rem;color:#9A8070">予算合計</div><div id="budget-total-label" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.3rem;font-weight:700;color:#5B8DD9">¥0</div></div>
-        <div style="text-align:right"><div style="font-size:0.75rem;color:#9A8070">月収との差</div><div id="budget-income-diff" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.1rem;font-weight:700;color:#7A9E7E">—</div></div>
+
+      <!-- 上段：予算合計・支出実績・月収との差 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F5E6D0;">
+        <div>
+          <div style="font-size:0.65rem;color:#9A8070;margin-bottom:2px;">予算合計</div>
+          <div id="budget-total-label" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.05rem;font-weight:700;color:#5B8DD9;">¥0</div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem;color:#9A8070;margin-bottom:2px;">今月の支出</div>
+          <div id="budget-tab-spend-total" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.05rem;font-weight:700;color:#C0675A;">¥—</div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem;color:#9A8070;margin-bottom:2px;">残余（予算−支出）</div>
+          <div id="budget-tab-spend-diff" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1.05rem;font-weight:700;color:#7A9E7E;">—</div>
+        </div>
       </div>
-      <!-- 予算配分グラフ -->
-      <div id="budget-bar-chart" style="display:flex;flex-direction:column;gap:4px;"></div>
+      <!-- 月収との差（実績ベース） -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:0.72rem;color:#9A8070;">月収との差（月収−実績支出）</div>
+        <div id="budget-income-diff" style="font-family:'Zen Maru Gothic',sans-serif;font-size:1rem;font-weight:700;color:#7A9E7E;">—</div>
+      </div>
+      <!-- 全体消化率バー -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;height:7px;background:#F5E6D0;border-radius:4px;overflow:hidden;">
+          <div id="budget-tab-spend-bar" style="height:100%;width:0%;background:#5B8DD9;border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+        <div id="budget-tab-spend-pct" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:#9A8070;white-space:nowrap;min-width:36px;text-align:right;">0%</div>
+      </div>
+
+      <!-- 下段：カテゴリ別 予算vs実績グラフ -->
+      <div id="budget-bar-chart" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
 
     <!-- ボタン群 -->
@@ -14677,8 +14702,127 @@ function setupSpendListener(){
     _spendItems=val?Object.entries(val).map(([key,v])=>({...v,id:key})):[];
     const activeTab=document.querySelector('#kakeibo-panel .mtab.active');
     const tab=activeTab?activeTab.id.replace('mtab-',''):'spending';
-    if(tab==='spending'){renderSpendCal();renderSpendList();}
+    // 支出データ更新時、全タブを再描画（月が一致している場合のみ）
+    if(tab==='spending'){
+      renderSpendCal();
+      renderSpendList();
+    }
+    if(tab==='monthly'){
+      renderBudgetMonthly();
+    }
+    if(tab==='budget'){
+      renderBudgetSettings();
+    }
+    // 決算タブ：bsum-actualをどのタブでも更新（バッジ更新）
+    _updateKakeiboLiveActual();
   });
+}
+
+// 支出実績をリアルタイムで決算タブの「実績支出」に反映
+function _updateKakeiboLiveActual(){
+  // ── 支出合計（支出タブ: spend-total / spend-balance） ──
+  const cycleItemsSpend = spendGetCycleItems(spendYear, spendMonth);
+  const totalSpend = cycleItemsSpend.reduce((s,i)=>s+Number(i.amount),0);
+  const spendTotalEl = document.getElementById('spend-total');
+  if(spendTotalEl) spendTotalEl.textContent=`¥${totalSpend.toLocaleString()}`;
+  const spendCountEl = document.getElementById('spend-count');
+  if(spendCountEl) spendCountEl.textContent=`${cycleItemsSpend.length}件`;
+  // spend-balance（残り）
+  const spendIncome = parseInt(localStorage.getItem(SPEND_INCOME_KEY))||0;
+  const spendBalEl = document.getElementById('spend-balance');
+  if(spendBalEl){
+    if(!spendIncome){ spendBalEl.textContent='—'; spendBalEl.style.color='#9A8070'; }
+    else{
+      const bal=spendIncome-totalSpend;
+      spendBalEl.textContent=(bal>=0?'+':'')+`¥${bal.toLocaleString()}`;
+      spendBalEl.style.color=bal>=0?'#7A9E7E':'#C0675A';
+    }
+  }
+
+  // ── 予算合計（予算タブ: budget-total-label） ──
+  const catBudgets = getBudgetForMonth(budgetSettingsYear, budgetSettingsMonth).cats||{};
+  const totalBudget = Object.values(catBudgets).reduce((s,v)=>s+Number(v||0),0);
+  const budgetTotalEl = document.getElementById('budget-total-label');
+  if(budgetTotalEl) budgetTotalEl.textContent=`¥${totalBudget.toLocaleString()}`;
+  const budgetIncome = Number(getBudgetForMonth(budgetSettingsYear, budgetSettingsMonth).income||0);
+
+  // ── 予算タブ内「今月の支出合計」・消化率バー ──
+  const cycleItemsBudget = spendGetCycleItems(budgetSettingsYear, budgetSettingsMonth);
+  const totalSpendBudgetMonth = cycleItemsBudget.reduce((s,i)=>s+Number(i.amount),0);
+  const btsTotal = document.getElementById('budget-tab-spend-total');
+  const btsDiff  = document.getElementById('budget-tab-spend-diff');
+  const btsBar   = document.getElementById('budget-tab-spend-bar');
+  const btsPct   = document.getElementById('budget-tab-spend-pct');
+  if(btsTotal) btsTotal.textContent = `¥${totalSpendBudgetMonth.toLocaleString()}`;
+  if(totalBudget > 0){
+    const remaining = totalBudget - totalSpendBudgetMonth;
+    const pct = Math.round((totalSpendBudgetMonth / totalBudget) * 100);
+    const over = totalSpendBudgetMonth > totalBudget;
+    if(btsDiff){
+      btsDiff.textContent = (remaining>=0?'+':'')+`¥${remaining.toLocaleString()}`;
+      btsDiff.style.color = remaining>=0 ? '#7A9E7E' : '#C0675A';
+    }
+    if(btsBar){
+      btsBar.style.width = Math.min(pct, 100) + '%';
+      btsBar.style.background = over ? '#C0675A' : pct>=80 ? '#E8B84B' : '#5B8DD9';
+    }
+    if(btsPct){
+      btsPct.textContent = pct + '%';
+      btsPct.style.color = over ? '#C0675A' : pct>=80 ? '#b07000' : '#9A8070';
+    }
+  } else {
+    if(btsDiff){ btsDiff.textContent='—'; btsDiff.style.color='#9A8070'; }
+    if(btsBar)  btsBar.style.width='0%';
+    if(btsPct)  { btsPct.textContent='—'; btsPct.style.color='#9A8070'; }
+  }
+
+  // ── 月収との差（月収 − 実績支出ベース） ──
+  const diffEl = document.getElementById('budget-income-diff');
+  if(diffEl){
+    if(!budgetIncome){ diffEl.textContent='—'; diffEl.style.color='#9A8070'; }
+    else{
+      const diff = budgetIncome - totalSpendBudgetMonth;
+      diffEl.textContent = (diff>=0?'+':'')+`¥${diff.toLocaleString()}`;
+      diffEl.style.color = diff>=0 ? '#7A9E7E' : '#C0675A';
+    }
+  }
+
+  // ── カテゴリ別 予算vs実績グラフ再描画 ──
+  if(typeof _renderBudgetBarChart === 'function') _renderBudgetBarChart();
+
+  // ── 実績支出（決算タブ: bsum-actual） ──
+  const actualEl = document.getElementById('bsum-actual');
+  if(!actualEl) return;
+  const cycleItems = spendGetCycleItems(budgetYear, budgetMonth);
+  const totalActual = cycleItems.reduce((s,i)=>s+Number(i.amount),0);
+  actualEl.textContent = `¥${totalActual.toLocaleString()}`;
+
+  // ── 最終残高（bsum-final-balance）再計算 ──
+  const income = Number(getBudgetForMonth(budgetYear, budgetMonth).income||0);
+  const prevKey = `${budgetYear}-${budgetMonth}`;
+  const storedPrev = _prevBalances[prevKey];
+  const prevBal = (storedPrev!==undefined&&storedPrev!==null) ? storedPrev : null;
+  const finalBalEl = document.getElementById('bsum-final-balance');
+  const carryBtn   = document.getElementById('carry-over-btn');
+  if(finalBalEl && income > 0){
+    let manuals={};
+    try{manuals=JSON.parse(localStorage.getItem('fam_final_bal_manual_v1')||'{}');}catch{}
+    if(!manuals[prevKey]){
+      const finalBal=(prevBal!==null?prevBal:0)+income-totalActual;
+      finalBalEl.textContent=(finalBal>=0?'+':'')+`¥${finalBal.toLocaleString()}`;
+      finalBalEl.style.color=finalBal>=0?'#7A9E7E':'#C0675A';
+      finalBalEl.dataset.value=finalBal;
+      if(carryBtn) carryBtn.style.display='block';
+    }
+  }
+
+  // ── 余剰／赤字（bsum-balance）再計算 ──
+  const balEl = document.getElementById('bsum-balance');
+  if(balEl && income){
+    const bal=income-totalActual;
+    balEl.textContent=(bal>=0?'+':'')+`¥${bal.toLocaleString()}`;
+    balEl.style.color=bal>=0?'#7A9E7E':'#C0675A';
+  }
 }
 
 function spendGetItems(){return _spendItems;}
@@ -14724,6 +14868,17 @@ function initMusukoContent(defaultTab){
 }
 
 window.switchMusukoTab=function(tab){
+  // 支出タブ↔決算タブ切替時に月を同期
+  if(tab==='monthly' || tab==='budget'){
+    // 支出タブで選択している月に決算月を合わせる
+    budgetYear  = spendYear;
+    budgetMonth = spendMonth;
+  }
+  if(tab==='spending'){
+    // 決算タブで選択している月に支出月を合わせる
+    spendYear  = budgetYear;
+    spendMonth = budgetMonth;
+  }
   ['spending','monthly','budget','yearly','sim'].forEach(t=>{
     const sec=document.getElementById('msec-'+t),btn=document.getElementById('mtab-'+t);
     if(sec)sec.style.display=t===tab?'block':'none';if(btn)btn.classList.toggle('active',t===tab);
@@ -14737,7 +14892,16 @@ window.switchMusukoTab=function(tab){
   if(typeof _kaikeiUpdateSyncDot === 'function') _kaikeiUpdateSyncDot();
 };
 
-window.spendChangeMonth=function(dir){spendMonth+=dir;if(spendMonth>11){spendMonth=0;spendYear++;}if(spendMonth<0){spendMonth=11;spendYear--;}renderSpendCal();renderSpendList();};
+window.spendChangeMonth=function(dir){
+  spendMonth+=dir;
+  if(spendMonth>11){spendMonth=0;spendYear++;}
+  if(spendMonth<0){spendMonth=11;spendYear--;}
+  // 決算タブの月も連動して追随
+  budgetYear=spendYear;
+  budgetMonth=spendMonth;
+  renderSpendCal();
+  renderSpendList();
+};
 
 function renderSpendCal(){
   if(!document.getElementById('spend-month-label'))return;
@@ -14816,11 +14980,20 @@ window.seditFreqChange=function(){const freq=document.getElementById('sedit-freq
 window.spendEditSave=function(){const id=document.getElementById('sedit-id').value,name=document.getElementById('sedit-name').value.trim(),day=parseInt(document.getElementById('sedit-day').value),amount=parseInt(document.getElementById('sedit-amount').value),cat=document.getElementById('sedit-cat').value,freq=document.getElementById('sedit-freq').value,enddate=document.getElementById('sedit-enddate').value||'';if(!name||!day||!amount){alert('項目名・日・金額を入力してください');return;}const original=spendGetItems().find(i=>i.id===id);if(!original)return;const repeat=freq==='monthly',yearly=freq==='yearly';const updated={...original,name,day,amount,cat,repeat,yearly,enddate};delete updated._dateStr;spendSaveItem(updated);spendEditClose();showMToast(`${name} を更新しました`);};
 
 // 予算・決算
-function setupBudgetListener(){if(!window.mdb)return;window.mdb.ref(window.FB_BUDGET).on('value',snap=>{_budgetSettings=snap.val()||{};const activeTab=document.querySelector('#kakeibo-panel .mtab.active');const tab=activeTab?activeTab.id.replace('mtab-',''):'';if(tab==='monthly')renderBudgetMonthly();if(tab==='budget')renderBudgetSettings();});}
+function setupBudgetListener(){if(!window.mdb)return;window.mdb.ref(window.FB_BUDGET).on('value',snap=>{_budgetSettings=snap.val()||{};const activeTab=document.querySelector('#kakeibo-panel .mtab.active');const tab=activeTab?activeTab.id.replace('mtab-',''):'';if(tab==='monthly')renderBudgetMonthly();if(tab==='budget')renderBudgetSettings();// 予算・支出合計を全タブ共通で更新
+_updateKakeiboLiveActual();});}
 function setupPrevBalanceListener(){try{_prevBalances=JSON.parse(localStorage.getItem(LS_PREV_BALANCE))||{};}catch{_prevBalances={};}try{_catMemos=JSON.parse(localStorage.getItem(LS_CAT_MEMOS))||{};}catch{_catMemos={};}}
 function budgetSettingsKey(y,m){return`${y}-${m}`;}
 function getBudgetForMonth(y,m){const key=budgetSettingsKey(y,m);return(_budgetSettings[key])||{income:0,cats:{}};}
-window.budgetChangeMonth=function(dir){budgetMonth+=dir;if(budgetMonth>11){budgetMonth=0;budgetYear++;}if(budgetMonth<0){budgetMonth=11;budgetYear--;}renderBudgetMonthly();};
+window.budgetChangeMonth=function(dir){
+  budgetMonth+=dir;
+  if(budgetMonth>11){budgetMonth=0;budgetYear++;}
+  if(budgetMonth<0){budgetMonth=11;budgetYear--;}
+  // 支出タブの月も連動
+  spendYear=budgetYear;
+  spendMonth=budgetMonth;
+  renderBudgetMonthly();
+};
 window.budgetChangeYear=function(dir){budgetYearDisp+=dir;renderBudgetYearly();};
 window.budgetSettingsChangeMonth=function(dir){
   // budgetSettingsYear/Monthは initMusukoContent で必ず初期化済みだが念のため
@@ -15203,15 +15376,82 @@ function renderBudgetSettings(){
   const sgEl=document.getElementById('budget-savings-goal');
   if(sgEl&&!sgEl.matches(':focus'))sgEl.value=savingsGoal||'';
 
-  // ── カテゴリカード ──
+  // ── カテゴリカード（予算入力 + 実績表示） ──
+  const cycleItemsBudget = spendGetCycleItems(budgetSettingsYear, budgetSettingsMonth);
+  const actuals = {};
+  Object.keys(CAT_LABELS).forEach(k => actuals[k] = 0);
+  cycleItemsBudget.forEach(i => {
+    if(actuals[i.cat] !== undefined) actuals[i.cat] += Number(i.amount);
+  });
+
   const cards=document.getElementById('budget-cat-cards');cards.innerHTML='';
   Object.entries(CAT_LABELS).forEach(([key,label])=>{
-    const card=document.createElement('div');card.className='budget-cat-card';card.style.borderTopColor=CAT_COLORS[key];
-    const lbl=document.createElement('div');lbl.className='budget-cat-card-label';lbl.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:${CAT_COLORS[key]};flex-shrink:0"></div>${label}`;
-    const yen=document.createElement('span');yen.style.cssText='font-size:0.85rem;color:#9A8070;text-align:right;display:block;margin-bottom:2px';yen.textContent='¥';
-    const inp=document.createElement('input');inp.type='number';inp.min='0';inp.placeholder='0';inp.className='budget-cat-card-input';inp.value=catBudgets[key]||'';inp.dataset.cat=key;
+    const budgeted = Number(catBudgets[key]||0);
+    const actual   = actuals[key] || 0;
+    const pct      = budgeted > 0 ? Math.round((actual / budgeted) * 100) : null;
+    const over     = budgeted > 0 && actual > budgeted;
+    const warn     = pct !== null && pct >= 80 && !over;
+    const barColor = over ? '#C0675A' : warn ? '#E8B84B' : CAT_COLORS[key];
+    const barWidth = budgeted > 0 ? Math.min((actual / budgeted) * 100, 100) : 0;
+
+    const card=document.createElement('div');
+    card.className='budget-cat-card';
+    card.style.borderTopColor = over ? '#C0675A' : CAT_COLORS[key];
+    card.style.position = 'relative';
+
+    // ラベル
+    const lbl=document.createElement('div');
+    lbl.className='budget-cat-card-label';
+    lbl.innerHTML=`<div style="width:8px;height:8px;border-radius:50%;background:${CAT_COLORS[key]};flex-shrink:0"></div>${label}`;
+
+    // 予算入力欄
+    const yen=document.createElement('span');
+    yen.style.cssText='font-size:0.78rem;color:#9A8070;display:block;margin:4px 0 1px';
+    yen.textContent='予算 ¥';
+    const inp=document.createElement('input');
+    inp.type='number';inp.min='0';inp.placeholder='0';
+    inp.className='budget-cat-card-input';
+    inp.value=catBudgets[key]||'';
+    inp.dataset.cat=key;
     inp.addEventListener('input',()=>budgetSaveCatForMonth(budgetSettingsYear,budgetSettingsMonth,key,inp.value));
-    card.appendChild(lbl);card.appendChild(yen);card.appendChild(inp);cards.appendChild(card);
+
+    // 実績表示
+    const actualRow = document.createElement('div');
+    actualRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:5px;';
+    const actualLabel = document.createElement('span');
+    actualLabel.style.cssText = 'font-size:0.68rem;color:#9A8070;';
+    actualLabel.textContent = '実績';
+    const actualVal = document.createElement('span');
+    actualVal.style.cssText = `font-size:0.78rem;font-weight:700;color:${over?'#C0675A':warn?'#b07000':'#4A2C1A'};font-family:'Zen Maru Gothic',sans-serif;`;
+    actualVal.textContent = actual > 0 ? `¥${actual.toLocaleString()}` : '—';
+    actualRow.appendChild(actualLabel);
+    actualRow.appendChild(actualVal);
+
+    // 消化率バー
+    const barWrap = document.createElement('div');
+    barWrap.style.cssText = 'margin-top:5px;';
+    const barBg = document.createElement('div');
+    barBg.style.cssText = 'height:5px;background:#F5E6D0;border-radius:3px;overflow:hidden;';
+    const barFill = document.createElement('div');
+    barFill.style.cssText = `height:100%;width:${barWidth}%;background:${barColor};border-radius:3px;transition:width 0.3s;`;
+    barBg.appendChild(barFill);
+
+    // 消化率テキスト
+    const pctRow = document.createElement('div');
+    pctRow.style.cssText = 'display:flex;justify-content:flex-end;margin-top:2px;';
+    const pctText = document.createElement('span');
+    pctText.style.cssText = `font-size:0.6rem;font-family:'DM Mono',monospace;color:${over?'#C0675A':warn?'#b07000':'#9A8070'};`;
+    pctText.textContent = pct !== null ? pct + '%' : (actual > 0 ? '予算未設定' : '');
+    pctRow.appendChild(pctText);
+    barWrap.appendChild(barBg);
+    barWrap.appendChild(pctRow);
+
+    card.appendChild(lbl);
+    card.appendChild(yen);
+    card.appendChild(inp);
+    card.appendChild(actualRow);
+    card.appendChild(barWrap);
+    cards.appendChild(card);
   });
   budgetUpdateTotal();
   _renderBudgetBarChart();
@@ -15222,17 +15462,63 @@ function renderBudgetSettings(){
 function _renderBudgetBarChart(){
   const el=document.getElementById('budget-bar-chart');if(!el)return;
   const catBudgets=getBudgetForMonth(budgetSettingsYear,budgetSettingsMonth).cats||{};
-  const total=Object.values(catBudgets).reduce((s,v)=>s+Number(v||0),0);
-  if(!total){el.innerHTML='<div style="font-size:0.72rem;color:#9A8070;text-align:center;padding:4px 0;">カテゴリ予算を入力するとグラフが表示されます</div>';return;}
-  el.innerHTML=Object.entries(CAT_LABELS).filter(([k])=>Number(catBudgets[k]||0)>0).map(([k,label])=>{
-    const v=Number(catBudgets[k]||0),pct=((v/total)*100).toFixed(1);
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-      <div style="font-size:0.62rem;color:#666;white-space:nowrap;width:60px;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-      <div style="flex:1;height:8px;background:#f0ebe3;border-radius:4px;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${CAT_COLORS[k]};border-radius:4px;transition:width 0.3s;"></div>
+  const totalBudget=Object.values(catBudgets).reduce((s,v)=>s+Number(v||0),0);
+
+  // 実績を集計
+  const cycleItems=spendGetCycleItems(budgetSettingsYear,budgetSettingsMonth);
+  const actuals={};
+  Object.keys(CAT_LABELS).forEach(k=>actuals[k]=0);
+  cycleItems.forEach(i=>{if(actuals[i.cat]!==undefined)actuals[i.cat]+=Number(i.amount);});
+
+  // 表示対象：予算または実績のあるカテゴリ
+  const targets=Object.entries(CAT_LABELS).filter(([k])=>Number(catBudgets[k]||0)>0||actuals[k]>0);
+
+  if(!targets.length){
+    el.innerHTML='<div style="font-size:0.72rem;color:#9A8070;text-align:center;padding:4px 0;">カテゴリ予算を入力するとグラフが表示されます</div>';
+    return;
+  }
+
+  // 最大値（予算と実績の大きい方）を基準にバー幅を正規化
+  const maxVal=Math.max(...targets.map(([k])=>Math.max(Number(catBudgets[k]||0),actuals[k])),1);
+
+  el.innerHTML = targets.map(([k,label])=>{
+    const budget=Number(catBudgets[k]||0);
+    const actual=actuals[k]||0;
+    const budgetW=budget>0?((budget/maxVal)*100).toFixed(1):0;
+    const actualW=actual>0?((actual/maxVal)*100).toFixed(1):0;
+    const pct=budget>0?Math.round((actual/budget)*100):null;
+    const over=budget>0&&actual>budget;
+    const warn=pct!==null&&pct>=80&&!over;
+    const actualColor=over?'#C0675A':warn?'#E8B84B':CAT_COLORS[k];
+    const pctText=pct!==null
+      ?(over?`<span style="color:#C0675A;font-weight:700;">${pct}% ▲超過</span>`
+        :warn?`<span style="color:#b07000;font-weight:700;">${pct}%</span>`
+        :`<span style="color:#9A8070;">${pct}%</span>`)
+      :(actual>0?'<span style="color:#9A8070;font-size:0.58rem;">予算未設定</span>':'');
+
+    return `<div style="margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:${CAT_COLORS[k]};flex-shrink:0;"></div>
+          <span style="font-size:0.68rem;color:#4A2C1A;">${label}</span>
+        </div>
+        <div style="font-size:0.6rem;">${pctText}</div>
       </div>
-      <div style="font-size:0.6rem;color:#888;white-space:nowrap;width:38px;text-align:right;">¥${(v/10000).toFixed(v<10000?0:1)}万</div>
-      <div style="font-size:0.6rem;color:#aaa;white-space:nowrap;width:32px;text-align:right;">${pct}%</div>
+      ${budget>0?`
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">
+        <div style="font-size:0.58rem;color:#9A8070;width:26px;text-align:right;flex-shrink:0;">予算</div>
+        <div style="flex:1;height:5px;background:#f0ebe3;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${budgetW}%;background:${CAT_COLORS[k]};opacity:0.35;border-radius:3px;"></div>
+        </div>
+        <div style="font-size:0.6rem;color:#888;white-space:nowrap;min-width:44px;text-align:right;">¥${budget.toLocaleString()}</div>
+      </div>`:''}
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div style="font-size:0.58rem;color:#9A8070;width:26px;text-align:right;flex-shrink:0;">実績</div>
+        <div style="flex:1;height:5px;background:#f0ebe3;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${actualW}%;background:${actualColor};border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <div style="font-size:0.6rem;${over?'color:#C0675A;font-weight:700;':'color:#888;'}white-space:nowrap;min-width:44px;text-align:right;">¥${actual.toLocaleString()}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -15263,10 +15549,19 @@ window.budgetSaveSavingsGoal=function(val){
 };
 
 window.budgetUpdateTotal=function(){
+  // inputフォームが存在する場合はそこから、なければFirebase DBから直接取得
   const inputs=document.querySelectorAll('#budget-cat-cards input[data-cat]');
-  let total=0;inputs.forEach(inp=>total+=Number(inp.value)||0);
+  let total=0;
+  if(inputs.length){
+    inputs.forEach(inp=>total+=Number(inp.value)||0);
+  } else {
+    // 予算タブが非表示のとき：DBから直接計算
+    const cats=getBudgetForMonth(budgetSettingsYear,budgetSettingsMonth).cats||{};
+    total=Object.values(cats).reduce((s,v)=>s+Number(v||0),0);
+  }
   const el=document.getElementById('budget-total-label');if(el)el.textContent=`¥${total.toLocaleString()}`;
-  const income=Number(document.getElementById('budget-income-input')?.value||0);
+  const income=Number(document.getElementById('budget-income-input')?.value||0)
+    || Number(getBudgetForMonth(budgetSettingsYear,budgetSettingsMonth).income||0);
   const diffEl=document.getElementById('budget-income-diff');
   if(diffEl){
     if(!income){diffEl.textContent='—';diffEl.style.color='#9A8070';}
