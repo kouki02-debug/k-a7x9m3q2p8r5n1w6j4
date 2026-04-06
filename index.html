@@ -424,6 +424,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <button class="wtab" id="ctab-graph" onclick="switchCalTab('graph')">📊 グラフ</button>
       <button class="wtab" id="ctab-4week" onclick="switchCalTab('4week')">📆 4週間</button>
       <button class="wtab" id="ctab-heatmap" onclick="switchCalTab('heatmap')">🌡 空き時間</button>
+      <button class="wtab" id="ctab-tv" onclick="switchCalTab('tv')">📺 テレビ</button>
     </div>
 
     <!-- ═══ 今日・今週ダイジェストタブ ═══ -->
@@ -740,7 +741,83 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <div id="graph-summary" style="display:flex;flex-direction:column;gap:8px;"></div>
     </div>
 
-  </div>
+    <!-- ═══ テレビタブ ═══ -->
+    <div id="csec-tv" style="padding:16px;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
+
+      <!-- ヘッダー -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-family:'Shippori Mincho',serif;font-size:0.95rem;color:var(--accent);">📺 観たいテレビ・ロケ情報</div>
+        <button onclick="tvToggleForm()" id="tv-add-btn"
+          style="padding:6px 14px;background:var(--accent);border:none;border-radius:8px;color:#0f0f0f;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:'Shippori Mincho',serif;">
+          ＋ 追加
+        </button>
+      </div>
+
+      <!-- 追加フォーム -->
+      <div id="tv-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px;font-family:'Shippori Mincho',serif;">📝 番組・ロケ情報を追加</div>
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div>
+            <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">タイトル ＊</div>
+            <input id="tv-title" type="text" placeholder="例：嵐にしやがれ 川越ロケ"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.85rem;outline:none;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">カテゴリ</div>
+              <select id="tv-cat" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem;outline:none;">
+                <option value="ロケ">📍 ロケ情報</option>
+                <option value="レギュラー">📡 レギュラー</option>
+                <option value="特番">🌟 特番・映画</option>
+                <option value="再放送">🔁 再放送</option>
+                <option value="その他">📺 その他</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">チャンネル</div>
+              <input id="tv-ch" type="text" placeholder="例：日テレ / TBS"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem;outline:none;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">放送日</div>
+              <input id="tv-date" type="date"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem;outline:none;">
+            </div>
+            <div>
+              <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">放送時間</div>
+              <input id="tv-time" type="text" placeholder="例：21:00〜21:54"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem;outline:none;">
+            </div>
+          </div>
+          <div>
+            <div style="font-size:0.65rem;color:var(--muted2);margin-bottom:3px;">メモ・ロケ地など</div>
+            <textarea id="tv-memo" rows="2" placeholder="例：川越市内でのロケ予定。蔵造りの町並みエリア"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem;outline:none;resize:none;line-height:1.7;font-family:'Noto Sans JP',sans-serif;"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="tvSave()" style="flex:1;padding:9px;background:var(--accent);border:none;border-radius:8px;color:#0f0f0f;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:'Shippori Mincho',serif;">💾 保存</button>
+            <button onclick="tvToggleForm()" style="padding:9px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.82rem;cursor:pointer;">キャンセル</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- フィルタ -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;">
+        <button class="tv-filter-btn active" onclick="tvSetFilter('all')" id="tvf-all" style="padding:5px 12px;border-radius:20px;border:1px solid var(--accent);background:rgba(200,169,110,0.1);color:var(--accent);font-size:0.72rem;cursor:pointer;white-space:nowrap;">すべて</button>
+        <button class="tv-filter-btn" onclick="tvSetFilter('upcoming')" id="tvf-upcoming" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:0.72rem;cursor:pointer;white-space:nowrap;">📅 今後</button>
+        <button class="tv-filter-btn" onclick="tvSetFilter('ロケ')" id="tvf-ロケ" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:0.72rem;cursor:pointer;white-space:nowrap;">📍 ロケ</button>
+        <button class="tv-filter-btn" onclick="tvSetFilter('レギュラー')" id="tvf-レギュラー" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:0.72rem;cursor:pointer;white-space:nowrap;">📡 レギュラー</button>
+        <button class="tv-filter-btn" onclick="tvSetFilter('特番')" id="tvf-特番" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:0.72rem;cursor:pointer;white-space:nowrap;">🌟 特番</button>
+      </div>
+
+      <!-- リスト -->
+      <div id="tv-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+    </div><!-- /csec-tv -->
+
+  </div><!-- /予定パネル内タブコンテンツ -->
 
 <!-- 恋愛パネル -->
 <div class="panel" id="love-panel" style="padding:0;">
@@ -11255,7 +11332,7 @@ function _detectPriority(summary) {
 
 // ── タブ切替 ──
 window.switchCalTab = function(tab) {
-  ['today','list','adjust','weekly','birthday','graph','4week','heatmap'].forEach(t => {
+  ['today','list','adjust','weekly','birthday','graph','4week','heatmap','tv'].forEach(t => {
     const sec = document.getElementById('csec-' + t);
     const btn = document.getElementById('ctab-' + t);
     if (sec) sec.style.display = t === tab ? 'block' : 'none';
@@ -11269,7 +11346,182 @@ window.switchCalTab = function(tab) {
   if (tab === 'graph')    calGraphInit();
   if (tab === '4week')    cal4WeekRender();
   if (tab === 'heatmap')  calHeatmapInit();
+  if (tab === 'tv')       tvInit();
 };
+
+// ════ テレビ・ロケ情報タブ ════
+const TV_LS = 'kouki_tv_list_v1';
+let _tvFilter = 'all';
+let _tvFormOpen = false;
+let _tvEditId = null;
+
+function tvInit() {
+  const dateEl = document.getElementById('tv-date');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+  tvRender();
+}
+
+function _getTvList() {
+  try { return JSON.parse(localStorage.getItem(TV_LS) || '[]'); } catch { return []; }
+}
+
+window.tvToggleForm = function() {
+  _tvFormOpen = !_tvFormOpen;
+  _tvEditId = null;
+  const form = document.getElementById('tv-form');
+  if (form) form.style.display = _tvFormOpen ? 'block' : 'none';
+  if (_tvFormOpen) {
+    ['tv-title','tv-ch','tv-time','tv-memo'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    const cat = document.getElementById('tv-cat'); if(cat) cat.value = 'ロケ';
+    const dt  = document.getElementById('tv-date'); if(dt)  dt.value = new Date().toISOString().slice(0,10);
+    document.getElementById('tv-title')?.focus();
+  }
+};
+
+window.tvSave = function() {
+  const title = document.getElementById('tv-title')?.value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+  const list = _getTvList();
+  const item = {
+    id:    _tvEditId || Date.now().toString(),
+    title,
+    cat:   document.getElementById('tv-cat')?.value   || 'その他',
+    ch:    document.getElementById('tv-ch')?.value.trim()   || '',
+    date:  document.getElementById('tv-date')?.value  || '',
+    time:  document.getElementById('tv-time')?.value.trim() || '',
+    memo:  document.getElementById('tv-memo')?.value.trim() || '',
+    saved: new Date().toISOString(),
+    watched: false,
+  };
+  if (_tvEditId) {
+    const idx = list.findIndex(x => x.id === _tvEditId);
+    if (idx >= 0) { item.watched = list[idx].watched; list[idx] = item; }
+    else list.unshift(item);
+  } else {
+    list.unshift(item);
+  }
+  list.sort((a,b) => (a.date||'9999') < (b.date||'9999') ? -1 : 1);
+  localStorage.setItem(TV_LS, JSON.stringify(list));
+  _tvFormOpen = false;
+  _tvEditId = null;
+  document.getElementById('tv-form').style.display = 'none';
+  tvRender();
+};
+
+window.tvSetFilter = function(f) {
+  _tvFilter = f;
+  document.querySelectorAll('.tv-filter-btn').forEach(btn => {
+    const isActive = btn.id === 'tvf-' + f;
+    btn.style.borderColor  = isActive ? 'var(--accent)' : 'var(--border)';
+    btn.style.background   = isActive ? 'rgba(200,169,110,0.1)' : 'transparent';
+    btn.style.color        = isActive ? 'var(--accent)' : 'var(--muted2)';
+  });
+  tvRender();
+};
+
+window.tvToggleWatched = function(id) {
+  const list = _getTvList();
+  const item = list.find(x => x.id === id);
+  if (item) { item.watched = !item.watched; localStorage.setItem(TV_LS, JSON.stringify(list)); tvRender(); }
+};
+
+window.tvDelete = function(id) {
+  if (!confirm('この番組情報を削除しますか？')) return;
+  const list = _getTvList().filter(x => x.id !== id);
+  localStorage.setItem(TV_LS, JSON.stringify(list));
+  tvRender();
+};
+
+window.tvEdit = function(id) {
+  const item = _getTvList().find(x => x.id === id);
+  if (!item) return;
+  _tvEditId = id;
+  _tvFormOpen = true;
+  document.getElementById('tv-form').style.display = 'block';
+  document.getElementById('tv-title').value = item.title;
+  document.getElementById('tv-cat').value   = item.cat;
+  document.getElementById('tv-ch').value    = item.ch;
+  document.getElementById('tv-date').value  = item.date;
+  document.getElementById('tv-time').value  = item.time;
+  document.getElementById('tv-memo').value  = item.memo;
+  document.getElementById('tv-form').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+function tvRender() {
+  const el = document.getElementById('tv-list');
+  if (!el) return;
+  let list = _getTvList();
+  const today = new Date().toISOString().slice(0,10);
+
+  if (_tvFilter === 'upcoming') {
+    list = list.filter(x => !x.date || x.date >= today);
+  } else if (_tvFilter !== 'all') {
+    list = list.filter(x => x.cat === _tvFilter);
+  }
+
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted2);font-size:0.82rem;">
+      ${_tvFilter === 'all' ? '📺 番組・ロケ情報を追加してみましょう' : 'この条件の番組がありません'}
+    </div>`;
+    return;
+  }
+
+  const CAT_COLORS = {
+    'ロケ':     { bg:'rgba(232,184,75,0.1)',   border:'rgba(232,184,75,0.4)',   text:'#E8B84B' },
+    'レギュラー':{ bg:'rgba(91,141,217,0.08)', border:'rgba(91,141,217,0.3)',  text:'#5B8DD9' },
+    '特番':     { bg:'rgba(148,92,192,0.08)',  border:'rgba(148,92,192,0.3)',  text:'#9E6FD0' },
+    '再放送':   { bg:'rgba(154,128,112,0.08)', border:'rgba(154,128,112,0.3)', text:'#9A8070' },
+    'その他':   { bg:'rgba(122,158,126,0.08)', border:'rgba(122,158,126,0.3)', text:'#7A9E7E' },
+  };
+
+  el.innerHTML = list.map(item => {
+    const c = CAT_COLORS[item.cat] || CAT_COLORS['その他'];
+    const isPast = item.date && item.date < today;
+    const isToday = item.date === today;
+    const diffDays = item.date ? Math.ceil((new Date(item.date) - new Date(today)) / 86400000) : null;
+    let dateLabel = '';
+    if (item.date) {
+      const d = new Date(item.date);
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+      dateLabel = `${item.date.slice(5).replace('-','/')}（${dow}）`;
+      if (isToday) dateLabel += ' 🔴今日';
+      else if (diffDays === 1) dateLabel += ' 明日';
+      else if (diffDays > 1 && diffDays <= 7) dateLabel += ` あと${diffDays}日`;
+    }
+
+    return `
+    <div style="background:var(--surface);border:1px solid ${isPast&&item.watched?'var(--border)':c.border};border-radius:12px;padding:12px 14px;opacity:${item.watched?0.55:1};transition:opacity 0.2s;">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:${item.memo?'8px':'0'};">
+        <!-- チェック -->
+        <button onclick="tvToggleWatched('${item.id}')" title="${item.watched?'未視聴に戻す':'視聴済みにする'}"
+          style="flex-shrink:0;width:22px;height:22px;border-radius:50%;border:2px solid ${c.text};background:${item.watched?c.text:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.7rem;margin-top:1px;transition:all 0.2s;">
+          ${item.watched?'<span style="color:white;">✓</span>':''}
+        </button>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:0.6rem;padding:1px 8px;background:${c.bg};border:1px solid ${c.border};border-radius:8px;color:${c.text};white-space:nowrap;">${item.cat}</span>
+            ${item.ch?`<span style="font-size:0.65rem;color:var(--muted2);">${item.ch}</span>`:''}
+            ${isToday?`<span style="font-size:0.6rem;color:var(--red);font-weight:700;">今日</span>`:''}
+          </div>
+          <div style="font-size:0.88rem;font-weight:700;color:${item.watched?'var(--muted2)':'var(--text)'};line-height:1.4;word-break:break-all;${item.watched?'text-decoration:line-through;':''}">${item.title}</div>
+          ${item.date||item.time?`
+          <div style="font-size:0.72rem;color:${isToday?'var(--red)':isPast?'var(--muted2)':'#5B8DD9'};margin-top:4px;display:flex;align-items:center;gap:6px;">
+            ${item.date?`<span>${dateLabel}</span>`:''}
+            ${item.time?`<span style="color:var(--muted2);">${item.time}</span>`:''}
+          </div>`:''}
+        </div>
+        <!-- 操作 -->
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <button onclick="tvEdit('${item.id}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:0.72rem;padding:2px 4px;" title="編集">✏️</button>
+          <button onclick="tvDelete('${item.id}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:0.72rem;padding:2px 4px;" title="削除">🗑</button>
+        </div>
+      </div>
+      ${item.memo?`<div style="font-size:0.75rem;color:var(--muted2);line-height:1.7;padding-left:30px;word-break:break-all;">📝 ${item.memo}</div>`:''}
+    </div>`;
+  }).join('');
+}
 
 // ── カレンダーリストタブ ──
 function calListInit() {
