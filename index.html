@@ -830,8 +830,7 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
 
   <!-- サブタブ -->
   <div style="display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;">
-    <button class="wtab active" id="ltab-calendar" onclick="switchLoveTab('calendar')">💗 カレンダー</button>
-    <button class="wtab" id="ltab-progress" onclick="switchLoveTab('progress')">📋 レポート</button>
+    <button class="wtab active" id="ltab-progress" onclick="switchLoveTab('progress')">📋 レポート</button>
     <button class="wtab" id="ltab-diary" onclick="switchLoveTab('diary')">📓 記録表</button>
     <button class="wtab" id="ltab-analysis" onclick="switchLoveTab('analysis')">📈 分析</button>
   </div>
@@ -839,46 +838,10 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
   <!-- ═══ 合い言葉モーダル ═══ -->
 
   <!-- ═══ カレンダータブ ═══ -->
-  <div id="lsec-calendar" style="padding:16px;display:block;">
-    <div class="sec-title">💕 恋愛</div>
+  <!-- カレンダータブはレポートタブに統合済み（lsec-calendarは非表示のまま維持） -->
+  <div id="lsec-calendar" style="display:none;"></div>
 
-    <!-- 恋愛カレンダー連携 -->
-    <div style="margin-top:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div class="sec-title" style="margin-bottom:0;">💗 恋愛2510 カレンダー</div>
-        <button onclick="syncLoveCalendar()" id="love-sync-btn"
-          style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:rgba(255,0,212,0.08);border:1px solid rgba(255,0,212,0.3);border-radius:20px;color:#ff69b4;font-size:0.78rem;cursor:pointer;transition:all 0.2s;font-family:'Noto Sans JP',sans-serif;">
-          🔄 同期更新
-        </button>
-      </div>
-      <div id="love-sync-status" style="font-size:0.72rem;color:var(--muted2);text-align:center;margin-bottom:12px;min-height:16px;"></div>
-
-      <!-- タイムラインカレンダー -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <button onclick="lovePrevMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">‹</button>
-          <span id="love-cal-label" style="font-family:'Shippori Mincho',serif;font-size:1rem;color:var(--accent);"></span>
-          <button onclick="loveNextMonth()" style="background:none;border:1px solid var(--border2);color:var(--muted2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:1rem;">›</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
-          <div style="text-align:center;font-size:0.68rem;color:#c06060;padding:3px 0;">日</div>
-          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">月</div>
-          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">火</div>
-          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">水</div>
-          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">木</div>
-          <div style="text-align:center;font-size:0.68rem;color:var(--muted2);padding:3px 0;">金</div>
-          <div style="text-align:center;font-size:0.68rem;color:#6080a8;padding:3px 0;">土</div>
-        </div>
-        <div id="love-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
-      </div>
-
-      <!-- タイムラインリスト -->
-      <div class="sec-title" style="font-size:0.88rem;">📋 出来事リスト</div>
-      <div id="love-event-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-    </div>
-  </div>
-
-  <!-- ═══ 発展記録タブ ═══ -->
+  <!-- ═══ レポートタブ（旧：発展記録タブ） ═══ -->
   <div id="lsec-progress" style="padding:0;display:none;overflow-y:auto;max-height:calc(100vh - 110px);">
 
     <!-- 発展記録サブタブ -->
@@ -1083,6 +1046,44 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(15,15,15,0.92)
       <button onclick="switchProgressTab('log')" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:0.78rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
         🗃️ 過去のレポート履歴を見る →
       </button>
+
+      <!-- ─── 恋愛2510カレンダー（統合） ─── -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid rgba(255,105,180,0.25);border-radius:14px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.85rem;">💗</span>
+            <span style="font-family:'Shippori Mincho',serif;font-size:0.88rem;color:#ff69b4;">恋愛2510 カレンダー</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button onclick="lovePrevMonth()" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:1rem;padding:2px 6px;">‹</button>
+            <span id="love-cal-label" style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--accent);min-width:80px;text-align:center;"></span>
+            <button onclick="loveNextMonth()" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:1rem;padding:2px 6px;">›</button>
+            <button onclick="syncLoveCalendar()" id="love-sync-btn"
+              style="padding:4px 10px;background:rgba(255,105,180,0.1);border:1px solid rgba(255,105,180,0.3);border-radius:14px;color:#ff69b4;font-size:0.68rem;cursor:pointer;">
+              🔄
+            </button>
+          </div>
+        </div>
+        <div id="love-sync-status" style="font-size:0.65rem;color:var(--muted2);text-align:center;padding:4px 0;min-height:16px;background:rgba(255,105,180,0.03);"></div>
+        <!-- グリッド -->
+        <div style="padding:10px 12px;">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+            <div style="text-align:center;font-size:0.6rem;color:#c06060;">日</div>
+            <div style="text-align:center;font-size:0.6rem;color:var(--muted2);">月</div>
+            <div style="text-align:center;font-size:0.6rem;color:var(--muted2);">火</div>
+            <div style="text-align:center;font-size:0.6rem;color:var(--muted2);">水</div>
+            <div style="text-align:center;font-size:0.6rem;color:var(--muted2);">木</div>
+            <div style="text-align:center;font-size:0.6rem;color:var(--muted2);">金</div>
+            <div style="text-align:center;font-size:0.6rem;color:#6080a8;">土</div>
+          </div>
+          <div id="love-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        </div>
+        <!-- 出来事リスト -->
+        <div style="padding:0 12px 12px;">
+          <div style="font-size:0.7rem;color:var(--muted2);margin-bottom:6px;font-family:'Shippori Mincho',serif;">📋 出来事リスト</div>
+          <div id="love-event-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+      </div>
 
     </div><!-- /psec-report -->
 
@@ -5514,14 +5515,14 @@ window.switchTab = function(n) {
   // 設定タブ：プロフィール読み込み・チェックリスト描画
   if (n === 'settings') { fortuneLoadProfile(); renderSettingsChecklist(); }
 
-  // 恋愛タブ：カレンダー・リスト初期化
+  // 恋愛タブ：レポートタブを初期表示（カレンダーはレポートに統合済み）
   if (n === 'love') {
-    switchLoveTab('calendar');
+    switchLoveTab('progress');
     renderLoveCal();
     renderLoveEventList();
     const status = document.getElementById('love-sync-status');
     if (status && !status.textContent) {
-      status.textContent = `✅ 恋愛2510 ${getLoveEvents().length}件 同期済み（最終取得: 2026-03-20）`;
+      status.textContent = `✅ 恋愛2510 ${getLoveEvents().length}件（最終取得: 2026-04-10）`;
     }
   }
 
@@ -8423,9 +8424,78 @@ window.manualSyncGcal = function() {
 // ════ 恋愛カレンダー ════
 const LOVE_CAL_ID = '54a94f9a433779030f85b7e42bfcd7aedeeed9b08cc8e16a761af36258113fea@group.calendar.google.com';
 const LOVE_CAL_KEY = 'kouki_love_cal_events';
-// 埋め込みデータ（MCP取得: 2026-03-20）
+// 埋め込みデータ（MCP取得: 2026-04-10 / 恋愛2510カレンダー 全10件）
 const LOVE_CAL_EMBEDDED = [
-  { date: '2026-03-07', summary: '【大発展】ステージ3→4へ突入', time: '' }
+  {
+    date: '2026-03-07',
+    summary: '【大発展】ステージ3→4へ突入',
+    time: '',
+    tag: '🌟',
+    desc: 'S3→S4へ正式突入。関係が一段上がった記念日。',
+  },
+  {
+    date: '2026-03-07',
+    summary: 'ステージ4よりの言動があった',
+    time: '',
+    tag: '💗',
+    desc: 'S4を示す言動を確認。',
+  },
+  {
+    date: '2026-03-25',
+    summary: '昨日いた？発言あり',
+    time: '',
+    tag: '💬',
+    desc: '「昨日いた？」の発言あり。存在を意識している反応として記録。',
+  },
+  {
+    date: '2026-04-01',
+    summary: '恋愛2510ログ〜長め会話2回と記憶保持',
+    time: '',
+    tag: '📝',
+    desc: '「お久しぶり！」と彼女から入ってきた。3連休の記憶保持・健康診断・採血の話題。2人だけの会話空間×2回。あなた自身を知ろうとする会話が増加した重要日。',
+  },
+  {
+    date: '2026-04-01',
+    summary: '📋 GC Log | 4/1 — 前進日・重要接触',
+    time: '',
+    tag: '📋',
+    desc: '脈あり温度80%・総合判定：前進日✅。彼女から「お久しぶり！」→休みの変更に関心→健康診断の話題→2人空間で長め会話×2→別れ際「じゃあね、バイバイ」。仲のいい同僚以上の認識が妥当な重要日。',
+  },
+  {
+    date: '2026-04-02',
+    summary: '恋愛2510ログ〜接触3回と『また来週で』',
+    time: '',
+    tag: '📝',
+    desc: '1回目：彼女からタメ語「おはよう！」→こちらも敬語なしで返し手を軽く上げた。2回目：「お疲れ様」。最後：彼女から「また来週で」と次回接触を前提にした締め。双方向で自然に回り始めた日。',
+  },
+  {
+    date: '2026-04-02',
+    summary: '📋 GC Log | 4/2 — タメ語挨拶・自然な親しさ定着',
+    time: '',
+    tag: '📋',
+    desc: '総合判定：親しさが自然に回り始めた日✅。週次締め：総接触5回・相手発信4回。Spring Bloom Linkの名にふさわしく接点がつながり関係が少しずつ形になっている週。次週は軽いプライベート入口を通せるかが焦点。',
+  },
+  {
+    date: '2026-04-07',
+    summary: '📋 GC Log | 4/7 — 彼女発信・健康診断会話・自然な接触',
+    time: '',
+    tag: '📋',
+    desc: '総合判定：自然再接続・会話の質の高さを確認✅。接触2回。2回目：彼女発信「健康診断終わった？」→4〜5分会話。身体を向き合わせ、目線・タメ語・余韻まで良好。「また来週で」の流れが実際の接触として回り始めた。',
+  },
+  {
+    date: '2026-04-08',
+    summary: '📋 GC Log | 4/8 — 「帰っちゃだめ」「19時まで残って」★週内最大前進日',
+    time: '',
+    tag: '⭐',
+    desc: '総合判定：週内最大の前進日・終業時間が関係トリガーとして浮上✅。接触4回。「今日は早い日？」→残業を伝えると「よし」→「帰っちゃだめ」「19時まで残って」「私は20時までになりそう」と終業時間を双方向で共有。同じ時間帯にいられることへの感情が乗った重要な反応。',
+  },
+  {
+    date: '2026-04-09',
+    summary: '📋 GC Log | 4/9 — 「筋肉ついた？」「ヤバっ」・週次締め',
+    time: '',
+    tag: '📋',
+    desc: '総合判定：非言語接触増加・個人への関心が育った日✅。接触6回。食堂で実質隣→「びっくりした！居るとは思わなかった笑」→「よっしゃ」「ヤバっ」→「よく運べるね！筋肉ついた？」と個人観察コメント。週次締め：確認接触12回（4/7×2・4/8×4・4/9×6）。土台は強まった。来週は「呼びかけ」と「軽い私的話題」を一段だけ通せるかが最大の焦点。',
+  },
 ];
 let loveCal = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
@@ -8449,18 +8519,31 @@ function renderLoveCal() {
   const first = new Date(loveCal.year, loveCal.month, 1).getDay();
   const days = new Date(loveCal.year, loveCal.month + 1, 0).getDate();
   const todayStr = new Date().toISOString().slice(0, 10);
+  const TAG_COLOR = {
+    '🌟': '#E8B84B', '⭐': '#E8B84B',
+    '📋': '#5B8DD9', '📝': '#7A9E7E',
+    '💗': '#ff69b4', '💬': '#9E6FD0',
+  };
   for (let i = 0; i < first; i++) {
-    const el = document.createElement('div'); grid.appendChild(el);
+    grid.appendChild(document.createElement('div'));
   }
   for (let d = 1; d <= days; d++) {
     const ds = `${loveCal.year}-${String(loveCal.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dow = new Date(loveCal.year, loveCal.month, d).getDay();
-    const hasEv = events.some(e => e.date === ds);
+    const dayEvts = events.filter(e => e.date === ds);
+    const hasEv = dayEvts.length > 0;
     const isToday = ds === todayStr;
     const dayColor = dow === 0 ? '#c06060' : dow === 6 ? '#6080a8' : 'var(--text)';
+    // 最初のイベントのタグ色でドット色を決定
+    const dotColor = hasEv ? (TAG_COLOR[dayEvts[0].tag || '💗'] || '#ff69b4') : '';
+    // 複数イベントは数字バッジ
+    const badge = dayEvts.length > 1
+      ? `<span style="position:absolute;top:1px;right:1px;font-size:0.45rem;background:${dotColor};color:white;border-radius:50%;width:10px;height:10px;display:flex;align-items:center;justify-content:center;font-weight:700;">${dayEvts.length}</span>`
+      : '';
     const el = document.createElement('div');
-    el.style.cssText = `aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:0.8rem;position:relative;cursor:default;${isToday ? 'background:rgba(200,169,110,0.2);border:1px solid var(--accent);' : ''}`;
-    el.innerHTML = `<span style="color:${isToday ? 'var(--accent)' : dayColor};font-weight:${isToday ? '700' : '400'};">${d}</span>${hasEv ? '<span style="width:5px;height:5px;background:#ff69b4;border-radius:50%;position:absolute;bottom:2px;"></span>' : ''}`;
+    el.style.cssText = `aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-size:0.78rem;position:relative;cursor:${hasEv ? 'pointer' : 'default'};${isToday ? 'background:rgba(200,169,110,0.2);border:1px solid var(--accent);' : ''}`;
+    if (hasEv) el.title = dayEvts.map(e => e.summary).join('\n');
+    el.innerHTML = `<span style="color:${isToday ? 'var(--accent)' : dayColor};font-weight:${isToday ? '700' : '400'};">${d}</span>${hasEv ? `<span style="width:5px;height:5px;background:${dotColor};border-radius:50%;position:absolute;bottom:2px;"></span>${badge}` : ''}`;
     grid.appendChild(el);
   }
 }
@@ -8470,27 +8553,48 @@ function renderLoveEventList() {
   if (!list) return;
   const events = getLoveEvents();
   if (!events.length) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem;">📅 出来事がありません</div>';
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted2);font-size:0.85rem;">📅 出来事がありません</div>';
     return;
   }
   const WDAYS = ['日', '月', '火', '水', '木', '金', '土'];
-  list.innerHTML = events.map(ev => {
+  // 新しい順に表示
+  const sorted = [...events].sort((a, b) => b.date.localeCompare(a.date));
+
+  // タグ別ボーダーカラー
+  const TAG_COLOR = {
+    '🌟': '#E8B84B', '⭐': '#E8B84B',
+    '📋': '#5B8DD9',
+    '📝': '#7A9E7E',
+    '💗': '#ff69b4',
+    '💬': '#9E6FD0',
+  };
+
+  list.innerHTML = sorted.map(ev => {
     const d = new Date(ev.date + 'T00:00:00');
-    const dateLabel = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WDAYS[d.getDay()]}）`;
-    const timeTag = ev.time ? `<span style="font-size:0.72rem;color:var(--muted2);margin-left:6px;">${ev.time}</span>` : '';
-    // 今日からの経過日数
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}（${WDAYS[d.getDay()]}）`;
     const today = new Date(); today.setHours(0,0,0,0);
-    const evDate = new Date(ev.date + 'T00:00:00');
-    const diffDays = Math.round((evDate - today) / 86400000);
-    const diffLabel = diffDays === 0 ? '<span style="font-size:0.7rem;background:rgba(255,105,180,0.2);color:#ff69b4;border-radius:8px;padding:1px 7px;margin-left:6px;">今日</span>'
-      : diffDays > 0 ? `<span style="font-size:0.7rem;color:var(--muted2);margin-left:6px;">${diffDays}日後</span>`
-      : `<span style="font-size:0.7rem;color:var(--muted2);margin-left:6px;">${Math.abs(diffDays)}日前</span>`;
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #ff69b4;border-radius:10px;padding:12px 14px;">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
-        <span style="font-size:0.72rem;color:var(--muted2);font-family:'DM Mono',monospace;">${dateLabel}</span>
-        ${timeTag}${diffLabel}
+    const diffDays = Math.round((new Date(ev.date + 'T00:00:00') - today) / 86400000);
+    const diffLabel = diffDays === 0
+      ? '<span style="font-size:0.62rem;background:rgba(255,105,180,0.2);color:#ff69b4;border-radius:8px;padding:1px 7px;">今日</span>'
+      : diffDays > 0
+        ? `<span style="font-size:0.62rem;color:var(--muted2);">あと${diffDays}日</span>`
+        : `<span style="font-size:0.62rem;color:var(--muted2);">${Math.abs(diffDays)}日前</span>`;
+    const tag = ev.tag || '💗';
+    const borderCol = TAG_COLOR[tag] || '#ff69b4';
+    const isLog = ev.summary?.startsWith('📋');
+    const isMain = ev.summary?.startsWith('🌟') || ev.summary?.includes('大発展');
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${borderCol};border-radius:0 10px 10px 0;padding:10px 12px;${isMain ? 'background:rgba(232,184,75,0.04);' : ''}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--accent);font-weight:700;">${dateLabel}</span>
+        ${ev.time ? `<span style="font-size:0.65rem;color:var(--muted2);">${ev.time}</span>` : ''}
+        ${diffLabel}
+        <span style="margin-left:auto;font-size:0.82rem;">${tag}</span>
       </div>
-      <div style="font-size:0.92rem;color:var(--text);line-height:1.5;">💗 ${esc(ev.summary)}</div>
+      <div style="font-size:${isMain ? '0.88' : '0.82'}rem;font-weight:${isMain ? '700' : '500'};color:${isMain ? 'var(--accent)' : 'var(--text)'};line-height:1.5;margin-bottom:${ev.desc ? '5px' : '0'};">
+        ${esc(ev.summary)}
+      </div>
+      ${ev.desc ? `<div style="font-size:0.72rem;color:var(--muted2);line-height:1.7;border-top:1px solid var(--border);padding-top:5px;margin-top:4px;">${esc(ev.desc)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -8507,16 +8611,15 @@ window.loveNextMonth = function() {
 window.syncLoveCalendar = function() {
   const btn = document.getElementById('love-sync-btn');
   const status = document.getElementById('love-sync-status');
-  if (btn) btn.textContent = '⏳ 同期中...';
-  // 埋め込みデータを再ロード・再描画
+  if (btn) btn.textContent = '⏳';
   setTimeout(() => {
     renderLoveCal();
     renderLoveEventList();
-    if (btn) { btn.innerHTML = '✅ 同期完了'; setTimeout(() => { btn.innerHTML = '🔄 同期更新'; }, 2000); }
+    if (btn) { btn.innerHTML = '✅'; setTimeout(() => { btn.innerHTML = '🔄'; }, 2000); }
     const now = new Date();
     const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    if (status) status.textContent = `✅ 恋愛2510 ${getLoveEvents().length}件 同期済み（最終取得: ${ts}）`;
-  }, 500);
+    if (status) status.textContent = `✅ 恋愛2510 ${getLoveEvents().length}件（最終取得: 2026-04-09）`;
+  }, 400);
 };
 
 function loadLovePdfs() {
@@ -9933,13 +10036,15 @@ window.loveDiaryReset = function() {
 };
 
 window.switchLoveTab = function(tab) {
+  // calendar は progress に統合済み → progress にリダイレクト
+  if(tab === 'calendar') tab = 'progress';
   ['calendar','progress','diary','analysis'].forEach(t => {
     const sec = document.getElementById('lsec-' + t);
     const btn = document.getElementById('ltab-' + t);
     if (sec) sec.style.display = t === tab ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', t === tab);
   });
-  if (tab === 'progress') loveSwitchTab_load();
+  if (tab === 'progress') { loveSwitchTab_load(); renderLoveCal(); renderLoveEventList(); }
   if (tab === 'diary')    loveDiaryInit();
   if (tab === 'analysis') loveAnalysisInit();
 };
@@ -10407,6 +10512,13 @@ function _renderTimingCard() {
 }
 
 // ── 週次接触カウント ──
+// 先週実績の初期データ（PDFレポート 4/9締め）
+const LOVE_CONTACT_PREV_WEEK = {
+  '2026-04-07': 2,  // 4/7：2回
+  '2026-04-08': 4,  // 4/8：4回（週内最大の前進日）
+  '2026-04-09': 6,  // 4/9：6回
+};
+
 function _renderWeeklyContactGrid() {
   const el = document.getElementById('weekly-contact-grid');
   if(!el) return;
@@ -10419,11 +10531,18 @@ function _renderWeeklyContactGrid() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(LOVE_CONTACT_LS)||'{}'); } catch{}
 
+  // 先週実績をlocalStorageに初期セット（まだ未設定なら）
+  Object.entries(LOVE_CONTACT_PREV_WEEK).forEach(([k, v]) => {
+    if(!(k in data)) data[k] = v;
+  });
+  localStorage.setItem(LOVE_CONTACT_LS, JSON.stringify(data));
+
   let html = DOW.map((d, i) => {
     const day = new Date(monday); day.setDate(monday.getDate() + i);
     const key = day.toISOString().slice(0,10);
     const count = data[key] || 0;
     const isToday = key === today.toISOString().slice(0,10);
+    const isPrev  = LOVE_CONTACT_PREV_WEEK[key] !== undefined;
     return `<div style="text-align:center;">
       <div style="font-size:0.6rem;color:${isToday?'var(--accent)':'var(--muted2)'};margin-bottom:3px;">${d}</div>
       <div style="font-size:0.65rem;color:var(--muted2);">${day.getDate()}</div>
@@ -10432,20 +10551,18 @@ function _renderWeeklyContactGrid() {
         <span style="font-family:'DM Mono',monospace;font-size:0.82rem;font-weight:700;color:${count>0?'#ff69b4':'var(--muted2)'};">${count}</span>
         <button onclick="loveContactDec('${key}')" style="width:22px;height:18px;background:var(--surface2);border:none;border-radius:4px;color:var(--muted2);font-size:0.7rem;cursor:pointer;line-height:1;">−</button>
       </div>
+      ${isPrev ? `<div style="font-size:0.55rem;color:rgba(255,105,180,0.5);margin-top:2px;">先週実績</div>` : ''}
     </div>`;
   }).join('');
   el.innerHTML = html;
-  const total = Object.values(data).filter((v,i) => {
-    const keys = Object.keys(data);
-    const day = new Date(keys[i]);
-    const diff = Math.ceil((today - day) / 86400000);
-    return diff >= 0 && diff < 7;
+
+  // 今週合計
+  const weekTotal = DOW.map((_, i) => {
+    const day = new Date(monday); day.setDate(monday.getDate() + i);
+    return data[day.toISOString().slice(0,10)] || 0;
   }).reduce((a, b) => a + b, 0);
   const tEl = document.getElementById('weekly-contact-total');
-  if(tEl) tEl.textContent = Object.entries(data).filter(([k]) => {
-    const d = new Date(k);
-    return d >= monday && d <= today;
-  }).reduce((a,[,v]) => a+v, 0);
+  if(tEl) tEl.textContent = weekTotal;
 }
 
 window.loveContactInc = function(key) {
